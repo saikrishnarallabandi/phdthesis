@@ -1,0 +1,21 @@
+\chapter{Introduction}
+
+Imagine a property of a model of the world referred to as De-Entanglement. It is (currently) defined as the ability to isolate the factors of variation which perhaps were involved in the design of the world itself. It is easy to see that such a property is extremely desirable in a model. Consider kids playing with Lego toys as opposed to a static toy like a TeddyBear or a Barbie. The freedom to dismantle the structure apart and re-compose variants of it has been shown to improve creativity\citep{gauntlett2014lego}. The implications become even more apparent when we consider a real life application such as speech processing. It is extremely difficult to reason about speech in the time domain by inspecting the individual samples. However, transforming the same utterance into frequency domain by applying Fourier Transform - a process that isolates the contribution from individual frequencies - makes reasoning easier, to the point of even identification of the individual linguistic units within the utterance. In this context, the individual frequencies and their contributions are the factors of variation in the generative process of speech data. The observation can be extended to other types of data as well. Consider spectroscopy: The ability to spectrally decompose (visible) light enables estimation of cosmic evolution of celestial bodies\citep{stellar_evolution}. The argument presented above claims that such isolation should invariably help downstream tasks. However, this does not appear to be always true. Consider as example the task of adding two natural numbers. Perhaps an appropriate de-entanglement for a model aimed at completing this task involves Peano axioms\citep{peano_axioms}. But we as humans have been conditioned to solve this task by cumulative addition of individual digits with appropriate carryover and not necessarily following \citep{peano_axioms}. Similarly consider  the inner workings of AlphaZero\citep{alpha_zero_withouthumans}. It is not clear if the self learning based algorithm is accomplishing an isolation of relevant factors of variation in the latent space. Moreover, there are scenarios where estimation of causal factors is intractable. In such scenarios, it appears hard to comment about performance with respect to a concept like de-entanglement. 
+
+Within the scope of my work, I am interested in investigating the extent to which  isolation of factors of variation as mentioned above is plausible and useful in the context of Natural Language Processing(NLP). In this context, `De-Entanglement' refers to the ability of a model to isolate the relevant causal factors of variation in the joint distribution spanned by the input and output distributions defined by the task at hand. Specifically, I am interested in answering some of the following research questions:
+
+\begin{itemize}
+    \item What are the scenarios where de-entanglement helps solve the task?
+    \item In cases where true, does de-entanglement help solve the task more efficiently? How is efficiency manifested? In making the model more compact? Making the algorithm faster?
+    \item In cases where true and de-entanglement does not result in a more efficient solution, why does this happen? 
+    \item What are the scenarios where de-entanglement cannot help solve the problem? Is it due to probabilities becoming too miniscule? Is it because the calculations seem implausible given the current compute? 
+    \item In cases where de-entanglement cannot be applied but seems reasonable, can we reformulate the problem or task so that we can apply de-entanglement? 
+    \item Are there cases where de-entanglement hurts the model? Does it do so by limiting the expressivity of models? Are there any model blindsplots in these scenarios? 
+    \item Why is de-entanglement preferable? Is it since it avoids adversarial attacks?
+    \item What are some of the challenges for de-entanglement? What is difficult about it? sparsity? lack of ability to identify the factors of variation? example: sentiment analysis
+    \item What are the approaches to accomplish de-entanglement? 
+    
+\end{itemize}
+
+
+
