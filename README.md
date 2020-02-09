@@ -3,6 +3,7 @@
 
 ## Week 1: Setup the structure of the dissertation 
 
+- [X] Self Assessed Affect Detection from Speech
      - [X] Does the argument of thesis hold together? 
      - [X] Is the chosen structure enabling the argument?  
      - [] Does each chapter lead to the next? 
