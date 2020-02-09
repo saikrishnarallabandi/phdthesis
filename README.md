@@ -1,11 +1,11 @@
 #  Work plan for Spring 2020
 
 
-## - [X] Week 1: Setup the structure of the dissertation 
+## Week 1: Setup the structure of the dissertation 
 
-     Does the argument of thesis hold together? 
-     Is the chosen structure enabling the argument?  
-     Does each chapter lead to the next? 
+     - [X] Does the argument of thesis hold together? 
+     - [X] Is the chosen structure enabling the argument?  
+     - [] Does each chapter lead to the next? 
      
 ## Week 2: Assess the thesis structure, specifically statement. 
 
