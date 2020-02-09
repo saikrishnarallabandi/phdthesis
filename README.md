@@ -1,4 +1,4 @@
-#  Work plan for Spring 2020
+#  Work plan for Spring 2020 [Inspiration](https://www.youtube.com/watch?v=XWW2_VseB-M)
 
 
 ## Week 1: Setup the structure of the dissertation 
