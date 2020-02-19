@@ -9,7 +9,13 @@
 \usepackage[utf8]{inputenc} % Remove warning on ascii conversion
 \usepackage[T1]{fontenc} % Remove warning on ascii conversion
 \usepackage[refsection=part,citestyle=apa,style=authoryear,natbib=true,backend=biber]{biblatex}
-\usepackage{hyperref}
+%\usepackage[
+%backend=biber,
+%style=alphabetic,
+%citestyle=authoryear
+%]{biblatex}
+ 
+%\usepackage{hyperref}
 
 % Make chapter numbers into string words 1 -> ONE
 \usepackage{fmtcount}
@@ -19,7 +25,7 @@
 \@chapapp \space \Numberstring{chapter} \vskip 10\p@ \fi #1\par \nobreak \vskip 30\p@ }}
 \makeatother
 
-\addbibresource{bib.bib}
+\addbibresource{LatexDiss/Dissertation/bib.bib}
 
 \begin{document}
 
@@ -54,7 +60,6 @@
 % OK. Everything is set up. Type your thesis here.
 \input{chapters/01_introduction.tex}
 
-
 %%%%%%%%%%%% De Entanglement
 \input{chapters/deentanglement.tex}
 
@@ -72,12 +77,7 @@
 
 
 % Bibliography
-\printbibliography[title=REFERENCES]
-
-
-%%%%%%%%%%%% Bibliography
-%\bibliographystyle{plainnat}
-%\bibliography{mybib}
+\printbibliography
 
 % Appendices
 %\include{app}
