@@ -4,8 +4,8 @@ Made a barebones thesis template
 
 ## 15 Feb 2020
 Here are the ingredients for introduction
- - [ ] Technical Challenges
- - [ ] Illustrative Example Scenarios
+ - [X] Technical Challenges
+ - [X] Illustrative Example Scenarios
  - [ ] Core Contributions
  - [ ] Other Contributions
 
