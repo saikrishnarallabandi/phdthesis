@@ -12,7 +12,7 @@
 
 - [X] Is the argument consistent throughout the draft ? 
 - [X] What are the research questions? 
-- [ ]Does every chapter resonate with the research questions?
+- [ ] Does every chapter resonate with the research questions?
 - [ ] Does every chapter point back and demonstrate how we are answering the questions?
 
 ### Week 3: Examine Abstract, Intro, conclusion. 
