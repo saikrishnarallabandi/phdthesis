@@ -1,5 +1,6 @@
 #  Work plan for Spring 2020 
 [Inspiration](https://www.youtube.com/watch?v=XWW2_VseB-M)
+
 Tracking progress in the file progress.md
 
 
