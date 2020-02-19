@@ -10,10 +10,10 @@
      
 ### Week 2: Assess the thesis structure, specifically statement. 
 
-     Is the argument consistent throughout the draft ? 
-     What are the research questions? 
-     Does every chapter resonate with the research questions?
-     Does every chapter point back and demonstrate how we are answering the questions?
+- [X] Is the argument consistent throughout the draft ? 
+- [X] What are the research questions? 
+- [ ]Does every chapter resonate with the research questions?
+- [ ] Does every chapter point back and demonstrate how we are answering the questions?
 
 ### Week 3: Examine Abstract, Intro, conclusion. 
      Do they frame argument? Do they fit together? Do they dance together? fit like Lego
