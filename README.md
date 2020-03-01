@@ -14,11 +14,12 @@ Tracking progress in the file progress.md
 
 - [X] Is the argument consistent throughout the draft ? 
 - [X] What are the research questions? 
-- [ ] Does every chapter resonate with the research questions?
-- [ ] Does every chapter point back and demonstrate how we are answering the questions?
+- [X] Does every chapter resonate with the research questions?
+- [X] Does every chapter point back and demonstrate how we are answering the questions?
 
 ### Week 3: Examine Abstract, Intro, conclusion. 
-     Do they frame argument? Do they fit together? Do they dance together? fit like Lego
+- [X] Do they frame argument? 
+- [X] Do they fit together? Do they dance together? fit like Lego
 
 ### Week 4: References and Bibliography  
      Are there wider problems being manifested by the references? 
