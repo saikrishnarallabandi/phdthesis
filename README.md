@@ -25,9 +25,10 @@ Tracking progress in the file progress.md
      Are there wider problems being manifested by the references? 
 
 ### Week 5: Determine the weakest part of the thesis
-              
-### Week 6: Highlight the original contribution to knowledg
-     Explain how each chapter demonstrates original contribution. 
+- [X] Re organize the structure of thesis
+
+### Week 6: Highlight the original contribution to knowledge
+ - [ ] Explain how each chapter demonstrates original contribution. 
 
 ### Week 7: Attention to spelling and grammar
      Make sure silly stuff is not there
