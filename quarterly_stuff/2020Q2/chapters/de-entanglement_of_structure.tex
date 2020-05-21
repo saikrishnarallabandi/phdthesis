@@ -1,0 +1,418 @@
+\chapter{De-Entanglement of Structure - Case study with Emphatic Speech Synthesis}
+
+
+section{Problem Motivation and Introduction}
+Humans exhibit both coarse as well as fine grained explicit control over how they speak an utterance. This targeted control on speech - often manifested in the form of prosodic constructions - allows us to effectively convey our intent in a conversation. Examples of controlled speech generation include simple prosodic manipulations such as implying specific meaning, highlighting or expressing interest in something as well as various communication strategies such as contradiction, contrast, complaints or grudging admiration\citep{nigel_ward_prosodic_patterns}. Further, such manipulation in prosody has been shown effective in
+applications such as  Infant Behavior Programs \citep{parental_prosody_changes_mediate_infant_language_production}, improving language acquisition\citep{prosody_functionwords_acquisition} and promoting rapport\citep{rapport_dialogsystems}. It seems natural to employ generative models of speech\citep{tacotron_original,deepvoice2,clarinet,parrotron} to assist in such scenarios \citep{does_tts_help_comprehension}. However, although there has been tremendous progress in the neural generative models for speech in the context of vocoder fidelity\citep{waveglow,wavenet_original}, the notion of controllability in such models is not yet fully evolved. While there have been works towards models aimed at controlling prosody\citep{ tacotron_hierarchical,tacotron_stylefacoruncovering}, the exerted control is still global or coarse grained in terms of styles of speech\citep{tacotron_prosodycontrol,tacotron_styletokens}, etc. In this work, we propose an approach that allows both global as well as local control over the prosodic variation in the generated speech.    
+
+Typically TTS is formulated as a conditional generative modeling problem. In our approach, we propose to instead formulate it as a conditional variational auto-encoder and incorporate automatically derivable information from speech data into the model architecture. This is motivated by the understanding that the utterances themselves do not always contain all the information needed to comprehend the appropriate prosody information. The missing information is either part of background knowledge about the world - implicit to humans but not annotated in the data - or is provided by accompanying context of the utterance. Formulating the task using variational inference allows us to efficiently capture the distribution of prosody thereby avoiding the averaging effect observed in a typical TTS system due to prosody marginalization. To illustrate this, consider an example sentence: `\textit{You do not have a pet shark}'. Most prosodic constructions for this sentence involve sarcasm since it is not commonplace to have sharks as pets - world knowledge. Similarly consider the sentence: `\textit{I dont want to be a nun}'. The linguistic unit subject to realization of prosodic stress in this sentence depends on the context information. Finally, consider the example of a TTS system deployed in a screenreader to assist visually impaired students comprehend math equations. Human voice talent would almost certainly place appropriate prosodic cues that help in comprehension of $x^{(y+z)}$  as opposed to ($x^y + z$). Our formulation allows the model to leverage prosodic information available from the speech signal and capture prosodic distribution. 
+
+To accomplish local as well as global prosody control, we incorporate inductive biases into the model architecture in the form of fundamental frequency($F_0$). Specifically, we quantize $F_0$ into multiple bins and constrain the latent space to disentangle these quantized values from acoustics at the level of phonemes. Our model is explained in detail in section \ref{proposed_approach}. During inference, the prosody distribution can be utilized to control and generate variability in the output speech. In short, our contributions from this work are: (1) We present EDITH, a hierarchical model that disentangles prosodic features in the form of $F_0$ enabling explicit global as well as local control. (2) We show that EDITH captures reliable representation of local prosody by generating speech with desired variations at the chosen linguistic level.  
+
+section{Emphasis by Disentangling Tonal Heuristics(EDITH)}
+\label{proposed_approach}
+
+% This is the main section of the paper. This is where the technical novelty of your paper should be clearly explained and motivated. Whenever possible, take the time to remind people how your proposed model/approaches address the challenges highlighted in the introduction. Also, make sure that the novelty of your new approaches is highlighted (i.e., what part was already done vs. what part is novel). You can divide this into two parts - model description and learning. (1) Model Description: formalize mathematically your proposed model or approach. This should include the mathematical definition of the variables involved in your problem (e.g., input variable x and labels y). You should also include an objective function describing what you are modeling (e.g., P(y|x)). While this section may be relatively short (e.g., half a page), you should be consistent with your notation later in the paper. (2) Learning: Describe how you are learning the parameters of your model. State clearly your loss function and the learning algorithm used in your experiments. If you have enough space, give derivation of your gradient, at least for some of the main model parameters.
+
+
+
+
+%In our approach, we propose to incorporate automatically derivable information from speech data into the model architecture so as to enable to Seq2Seq architectures better model prosody. This is motivated by the understanding that the utterances themselves do not always contain all the information needed to comprehend the appropriate prosody information. The missing information is either part of background knowledge about the world - implicit to humans but not annotated in the data - or is provided by accompanying context of the utterance. Consider an example sentence: `\textit{You do not have a pet shark}'. Most prosodic constructions for this sentence involve sarcasm since it is not commonplace to have sharks as pets - world knowledge. Similarly consider the sentence: `\textit{I dont want to be a nun}'. The linguistic unit subject to realization of prosodic stress in this sentence depends on the context information.  While it is possible to include context information in long form content generation such as audiobooks, there are scenarios where we do not have access to the context or the the available context is ambiguous. Consider the example of a TTS system deployed to assist visually impaired students comprehend math equations. There is not sufficient signal in the text to demarcate between  $x^{(y+z)}$ and $x^y + z$. However, human voice talent would almost certainly place appropriate prosodic cues that help in comprehension in such cases. Therefore, we believe that it is helpful to leverage information from the speech signal and incorporate biases into the model architecture during the training itself to help the model accomplish the desired synthesis. 
+
+
+\begin{figure}[t]
+\centering
+\includegraphics[scale=0.2]{images/EDITH_arch.png}
+\caption{\textit{Architecture of EDITH. Circles denote LSTM cells, rectangles represent vectors and pentagons represent global latent vectors. (Best viewed in color)}} 
+\label{edith_architecture}
+\end{figure}  
+
+EDITH learns the joint distribution between pairs of temporal sequences \{\textbf{x}, \textbf{y}\} where \textbf{x} denotes the features and \textbf{y} denotes the acoustic parameters. Let Ti and To denote the lengths of input and output sequences respectively. Input features \textbf{x} consist of both linguistic features denoted as \textbf{$x_{linguistic}^{1:Ti}$} as well as features extracted from the acoustic signal denoted as \textbf{$x_{acoustic}^{1:To}$}. The output features \textbf{y} consist of linear feature representation \textbf{$y_{linear}^{1:To}$} as well as mel features \textbf{$y_{mel}^{1:To}$}. It has to be noted that \textbf{$x_{acoustic}^{1:To}$} = \textbf{$y_{mel}^{1:To}$}. To efficiently model varying prosody and prevent the averaging effect, we incorporate a variational layer. Therefore, EDITH is a conditional variational auto-encoder. During inference, we discard the encoder part of our model. Our model can be summarized by the following set of equations: 
+
+%section{EDITH: Model Description}
+
+
+%We are interested in incorporating inductive biases into the architecture of Seq2Seq TTS enabling explicit control over prosody. Ideally, we desire the priors to push model towards learning and exploiting latent representations that can generate different prosodic events. In addition, we also desire the learnt representations to be generalized so that the approach can be extended to different speakers as well as languages or language combinations such as code mixing.  While there are many other parameters associated with prosody, $F_0$ can be considered one of the most important attributes. Based on this, we have chosen to incorporate priors in terms of $F_0$. To accomplish this, we have extracted fundamental frequency using SPTK toolkit\citep{sptk2009speech} and then quantized it into multiple bins with each bin spanning 25 Hz. In other words, continuous $F_0$ values were mapped to their discrete bin indices, resulting in ordinal $F_0$ values for each utterance. We then incorporated these values into the model architecture. We have investigated two ways of incorporating $F_0$ priors: (1) Explicit labeling by directly adding the ordinal $F_0$ as additional input to the model and (2) Implicit incorporation by adding prediction of ordinal $F_0$ as a secondary task in the model. The predicted $F_0$ is used as conditioning information to the decoder along with the input from soft attention. 
+
+%\begin{flalign*}
+\begin{equation} \label{eq1}
+\begin{split}
+encoded ={}& \textbf{H}^{Encoder}(x_{linguistic}, x_{acoustic}) \\
+z_{g}, z_{l} ={}& \textbf{VI}(encoded) \\
+\hat{y}_{mel} ={}& \textbf{H}^{Decoder}(x_{linguistic},z_{g}, z_{l}) \\
+\hat{y}_{linear} ={}& \textbf{H}^{postnet}(\hat{y}_{mel})
+\end{split}
+\end{equation}
+%\end{flalign*}
+
+\iffalse
+\begin{equation} \label{eq1}
+\centering
+\begin{split}
+e_{1:T_{input}} & = Encoder(x_{1:T_{input}}) \\
+z_{global}, z_{local} = VI(e_{1:T_{input}}) \\
+\alpha_{i} & = Attention( e_{1:T_{input}}, d_{i-1}) \\
+e^1_i &= \sum_j \alpha_{ij} e_j \\
+d_i &= Decoder(e^1_i, s)
+\end{split}
+\end{equation}
+We imagine the generative process as follows:
+
+\begin{itemize}
+    \item We sample a global prosody embedding for the utterance.
+    \item Conditioned on the sampled embedding and the textual input, we predict local prosody embedding at time $t0$
+    \item The predicted prosody embedding is combined with the textual embedding to generate frame level acoustic representation at $t0$.
+    \item The process continues.
+\end{itemize}
+
+section{Model Components}
+
+\subsubsection{EDITH Encoder}
+
+- clockwork hierarchical LSTM for prosodic features \\
+- Vanilla LSTM for linguistic features \\
+- Both reset at phone boundaries \\
+
+
+\subsubsection{EDITH Variational Layer}
+
+- Vector Quantization. \\
+- Stop Gradient \\
+- Commitment Loss \\
+- Normalization of latent vectors
+
+\subsubsection{EDITH Decoder}
+
+- Dot product Attention \\
+- 5 frames at once \\
+- No masking of outputs to enable better end of sentence prediction.
+\fi
+
+Design of our encoder is inpired by the encoder from \citep{chive}. We use clockwork hierarchical LSTM to encode \textbf{$x_{linguistic}^{1:Ti}$} and \textbf{$x_{acoustic}^{1:To}$}. However, our models are clocked at the rate of phones as opposed to syllables. In addition, we do not incorporate any features from word or sentence levels in our encoder to keep the architecture compact. Our variational layer is derived from \citep{vqvae} and is employed  to generate global and local latent variables $z_{g}$, $z_{l}$ respectively. Our decoder is similar to a typical attention based acoustic decoder\citep{tacotron_original} and includes a postnet. While similar in formulation, EDITH has an important difference from \citep{chive} in that our local latent variables follow the rate of input as opposed to output as in \citep{chive}. This allows us to exercise more control over the generated prosodic variations. 
+
+% In \citep{chive}, authors employ clockwork hierarchical decoding for this step. We employ a vanilla architecture instead.
+
+\textbf{Optimization and Learning}: $x_{acoustic}$ is passed through phone rate LSTM. This is shown as block 1 in figure \ref{edith_architecture}. $x_{linguistic}$ is passed through phone LSTM. The representations are concatenated and passed through EDITH Encoder. This is shown as block 2. Outputs from the encoder are passed through the variational layer where vector quantization is performed to pick the most suitable global latent prosodic vector. Conditioned on encoder outputs and the global latent prosodic vector, we predict Ti local prosodic vectors corresponding to predicted local prosodic features. 
+We constrain the local latent variables to correspond to quantized $F_0$ by modeling their prediction as a classification task. These local latent variables thus capture the local variations in prosody while global latent variable is reserved for capturing sentence level variations. Ground truth quantized values for classification are obtained by selecting the maximum bin within the duration of phoneme. This is shown as block 3 in the figure. We then employ dot product attention in our decoder. \textbf{$y_{mel}$} is generated by decoder conditioned on local, global latent variables and the encoded $x_{linguistic}$. A postnet is employed to generate \textbf{$y_{linear}$} conditioned on \textbf{$y_{mel}$}. EDITH is optimized to minimize two \textit{L1} losses one each for \textbf{$y_{mel}$} and \textbf{$y_{linear}$} and one classification loss for local latent variables. Additionally, to train the vector quantization layer, we minimize encoder commitment loss for $z_g$ and vector quantization loss following \cite{vqvae} for both $z_g$ and $z_l$. This can be expressed as below:
+
+\begin{equation} \label{eq1}
+\begin{split}
+\textit{L} = \lambda_{linear} \sum_{t=0}^{To} \| y_{linear}^t - \hat{y}_{linear}^t \|  \\
++ \lambda_{mel} \sum_{t=0}^{To} \| y_{mel}^t - \hat{y}_{mel}^t \| \\
++ \lambda_{qF_0} \sum_{t=0}^{Ti} Div(qF_0, \hat{qF_0}) + \lambda_{e} L_{e} + L_{VQ}\\
+\end{split}
+\end{equation}
+
+
+%The weight for the encoder commitment loss is linearly increased to reach 0.2 at update 
+
+
+\iffalse
+\begin{itemize}
+
+    \item $x_{prosodic}$ is passed through phone rate LSTM. This is shown as block 1 in figure \ref{edith_architecture}. Following the approach in \citep{chive}, we reset the state of LSTM after every phoneme boundary.
+    \item $x_{linguistic}$ is passed through phone rate LSTM. This is shown as block 2 in figure \ref{edith_architecture}.
+    \item The representations are concatenated and passed through EDITH encoder
+    \item Outputs from the encoder are passed through the variational layer where vector quantization happens to pick the most suitable global latent prosodic vector. This is shown as block 3 in figure \ref{edith_architecture}.
+    \item Conditioned on encoder outputs and the global latent prosodic vector, we predict T local prosodic vectors corresponding to predicted local prosodic features. This is not shown for brevity in the figure.
+    \item Global and local latent vectors are then employed in addition to the attention outputs to generate the frame level acoustic features.
+    \item Loss Terms : (1) Mel Acoustic feature reconstruction (2) Linear Acoustic feature reconstruction (3) Prosodic Feature Reconstruction (3) Embedding Loss from latent space (4) Encoder commitment loss from latent space 
+    
+\end{itemize}
+
+\fi
+
+
+section{Model Interpretation}
+This approach can be interpreted as VQVAE\citep{vqvae}. It can also be seen as GST\citep{tacotron_styletokens} based encoding but our approach has two differences:(1) We do not use a different encoder for spectral information and (2) We explicitly constrain the latent classes to correspond to the quantized $F_0$s. We divide the model into individual blocks or modules. Therefore, it can be seen as an extension to Neural Module Networks\cite{neural_module_networks}. In \cite{chive}, authors introduce clockwork hierarchical VAE to predict $F_0$, duration and $C_0$. Our approach of incorporating $F_0$ information at the output of encoder in the form of additional task can be seen similar to this work. However, we use quantized $F_0$s, do not employ clockwork structure in our model and do not explicitly model duration or $C_0$.
+
+
+section{Experimental Setup}
+\label{experimental_setup}
+
+%  Start this section by clearly stating what your main research questions are. Whenever possible, try to design experiments to test specific research hypotheses or questions. If you claimed that components A and B are the main novelties of your model, then you should have ablation experiments that compare your model with and without A (and similarly for B). Your experiments should also include comparison with baseline models (from your midterm report). Furthermore, the experiments should give the reader an understanding of the effect of your model hyper-parameters. For example, plot performance of your model with different regularization factors. Finally, make sure to write the experimental setup method in such a way that a person not familiar with your work would be able to reproduce your model just by reading the paper. Describe the dataset you are using for this project. Describe the input modalities and annotations available in this dataset. Describe your experimental methodology for evaluating the baseline model(s). This should include the way you split your dataset for training, validation and testing. It should also include any details about the hyper-parameters and the evaluation metrics. If space is too short, you can move some of the implementation details in the supplementary material, but the main design decision should be explained in the main paper.
+
+
+
+\textbf{Data}: We have used data from LJSpeech dataset\citep{ljspeech_dataset} to build our systems. We have used all of the 13100 sentences. The text was normalized manually to convert non standard forms (for ex. 1993) to written forms (nineteen ninety three).
+
+
+\iffalse
+section{Baseline}
+
+Our acoustic model is based on Tacotron\cite{tacotron_original} Seq2Seq speech synthesis system and is built using PyTorch. We have used phones as the input instead of characters.  We have not performed masking of padded frames as is typically done in Seq2Seq models. We found that not masking helps model better predict end of sentence as mentioned in \cite{tacotron_original}. Since adjacent frames seem to be correlated, our decoder predicts 3 frames per timestep. We have used a batch size of 64 to train the baseline model. 
+\fi
+%Our vocoder is based on WaveNet\cite{wavenet_original}. Speech signal was power normalized and squashed to the range (-1,1). We have used 16 bit mulaw quantization to encode individual samples. Instead of transposed convolutions we have employed linear interpolation to upsample the acoustic frames to match the time resolution of speech samples. To optimize the model, we use discretized Mixture of Logistics loss\cite{salimans2017pixelcnn++,juvela2019waveform} with 12 logistic classes. 
+
+
+\textbf{Baselines}: Our acoustic model is based on Tacotron\cite{tacotron_original} Seq2Seq speech synthesis system is built using PyTorch\citep{pytorch}. We have not performed masking of padded frames as is typically done in Seq2Seq models. We found that not masking helps model better predict end of sentence as mentioned in \cite{tacotron_original}. Since adjacent frames seem to be correlated, our decoder predicts 5 frames per timestep. Our model has three deviations from the original implementation: (1) Phones are used as the input instead of characters. (2) CBHG module in the encoder and postnet has been replaced with with three LSTM layers. (3) We use all the predicted frames at a time step as input to the decoder(as opposed to only the last time step) while predicting the next frames.  We have used a batch size of 64 to train the baseline model. To enable control of prosody, we employ quantized $F_0$ values as additional inputs to this baseline model. For this, we first extract $F_0$ values for the dataset and quantize them into multiple bins each spanning 25 \textit{Hz} without any overlap. These quantized $F_0$ values are embedded and added as additional inputs to the baseline model. In other words, this is a conditional generative model with phones and quantized $F_0$s as inputs. Additionally, we also build a model that uses word level prosodic features extracted using AuToBI\citep{rosenberg2010autobi}. We refer to this system as \textbf{AuToBI}.
+
+\textbf{EDITH Hyperparameters}: The encoders of both $x_{acoustic}$ and $x_{linguistic}$ are realized using bidirectional LSTMs. We have used 256 as the hidden dimensions for both these encoders. Both our global and local latent variables are of 256 dimensions. We employ 10 global latent classes. The network to predict local latent variables is implemented using bidirectional LSTMs that takes 512 dimensional input and outputs 256 dimensional vectors. Encoder weight $\lambda_e$ was linearly increased to 0.2 till 10K timesteps and remained constant after that. For quantization of $F_0$, we have followed the same procedure as in Baseline. 25 Hz was chosen as the size of bin. This effectively resulted in a total of 14 bins and thus 14 local latent classes. After every update step, we normalize the local latent variables by the norm. Since these classes correspond to ordinal data in terms of quantized $F_0$s, we believe that normalizing places the vectors on a unit circle.
+
+\textbf{SubUtterance Models}: Long utterances present in audiobooks  are rich in prosodic variations but also lead to computational overhead in terms of processing speed. Therefore, we have built systems that have access to only part of the utterance by selecting aligned segments of text and acoustics within a full sentence. We note that such an approach is already used for vocoding: Typical vocoders the authors are aware of are trained using aligned chunks of acoustic vectors and corresponding speech samples  as opposed to full utterances. Encouraged by this, we build sub utterance based models for both baseline as well as proposed approach. To distinguish from the full sentence models, we refer to these systems as Sub Utterance Baseline(\textit{SUB}) and Sub Utterance EDITH(\textit{SUE}) while referring to the full sentence models as Full Utterance Baseline(\textit{FUB}) and Full Utterance EDITH(\textit{FUE}) respectively.
+
+%We have built multiple variants to compare the performance of the proposed approach. Extending our baseline, we have built systems that employ quantized F0 in their architectures. Additionally, we have also built models trained with access to only part of the full sentence. We refer to these systems as Full Sentence Quantized F0 (FSQ) and Sub Sentence Quantized F0 (SSQ) respectively. For each of the above systems, we have incorporated the prior information about F0 either at the input or as an additional loss term after the encoder. We refer to these systems with subscripts. For instance, the system employing full sentences for training with quantized F0 as inputs in addition to phoneme embeddings is referred to as $FSQ_i$. Similarly, the system employing sub sentence training but with additional loss term is referred to as $SSQ_l$. In addition to the proposed approaches, we have also built systems that employ AuToBI\cite{rosenberg2010autobi} labels. We have not built a sub sentence variant in this approach and refer to the full sentence variant as AUTOBI. We have utilized 1300 sentences as validation data to tune our hyperparameters.
+
+\begin{table}[t]
+\centering
+\caption{\textit{Results from Preference and MOS Tests for Emphasis generation. The entries for the preference portion(columns 2 through 6)indicate preference values obtained by the systems in the first column against every other system in the subsequent columns.}} 
+\small
+\setlength\tabcolsep{2pt}
+\begin{tabular}{|c|c|c|c|c|c|| c| }
+  \hline
+ Config &  $FUB$ &  $FUE$ & $SUB$ & $SUE$ & AUToBI & MOS\\
+  \hline
+  $FUB$ &  -  & 92 & 396 & 363 & \textbf{441} & 4.0\\
+  \hline
+  $FUE$(ours) &  \textbf{345} & - & \textbf{424}  & \textbf{378} & \textbf{477} & 4.0 \\
+  \hline
+ $SUB$ &  91 & 86 & - & 235 & \textbf{278} & 3.4 \\
+  \hline
+ $SUE$(ours) &  64 & 86 &  243 & - & 227 & 3.6 \\
+  \hline
+ AUToBI &  47 & 19 & 219 & 256 & - & 3.9 \\
+  \hline
+\end{tabular}
+\label{table_results_quantvsautobi}
+\end{table}
+
+\textbf{Evaluation}:
+Evaluation was performed  in the form of listening tests using \citep{testvox_parlikar}. We have conducted two types of listening tests: (1) Rating the naturalness in  terms of Mean Opinion Score (MOS) on a scale of 1(least natural) to 5(highly natural) and (2) ABX Preference test on Emphasis where the users need to mention their preference towards either of the systems or state that they prefer neither. For the preference evaluation we have manually curated 50 sentences where the meaning was implied based on prosody. Participants were shown the entire sentence and its implication in parenthesis. An example sentence from our testset is `\textit{It looks like a starfish} (but it really is not).' Every system was used to generate this test set\footnote{in the mentioned example, the systems generated just the part '\textit{It looks like a starfish}' and not the part in parenthesis}. For baseline and proposed approaches, the phonemes to be emphasized are rendered with embedding vector corresponding to bin 12 while others are rendered with bin 8 The participants are to mention their preference to the system that faithfully generates prosody in line with the information in parenthesis. We had 25 listeners and each participant rated 20 random sentences giving us a total of 500 ratings per pair of systems.
+
+
+\begin{figure}[t]
+\centering
+\includegraphics[scale=0.25]{images/f0_manipulation.png}
+\caption{\textit{Plot of Fundamental Frequency($F_0$) trajectories obtained from generated waves using proposed approach \textit{FUE}. Variants of the sentence `John loves Mary' are generated with emphasis on individual words(captialized). The blue trajectory corresponds to $F_0$ when no emphasis was applied to any word. The plot highlights that the proposed approach allows explicit local control at the desired level in the generated speech. We have submitted the generated wavefiles as supplementary material.}} 
+\label{plot_overview}
+% These and other samples are attached in the supplementary material for reference.
+\end{figure}  
+
+
+
+\textbf{Discussion}: The preference evaluation results for the proposed approaches are presented in table \ref{table_results_quantvsautobi}.  We have excluded the \textit{No Preference} values from this table for brevity. However, they can be estimated based on the values in the table. The full utterance based systems seem to outperform sub utternace as well as AuToBI based systems consistently. Within the full sentence systems,  our proposed approach(\textit{FUE}) outperforms the baseline conditional generative model(\textit{FUB}). A sample output generated by conditioning the local latent variables to emphasize individual linguistic units(words) from our approach can be examined in figure \ref{plot_overview}. An informal listening test in the scenarios where full sentence models were not preferred revealed an interesting finding: All these scenarios were when the emphasized word was the first in the sentence. We hypothesize that this might be due to the canonical word order(\textbf{SVO}) in English. One approach to handle this could be to incorporate a suitable weighting to consider this effect and we plan to investigate this further.  The sub utterance based approaches seem to match the performance of AUToBI systems while clearly under performing their full utterance counterparts. Informal listening evaluations revealed that the sub utterance models seem to have repetition of phoneme units within the generated sentence. We attribute this to the errors in alignment and phoneme boundary estimation and plan to investigate approaches to circumvent this behavior in future work. 
+
+%Some listeners have expressed that they felt multiple words were focused in the sentence but nevertheless the intended word more or less stood out from the rest except when it was the first word in sentence. We hypothesize that this might be due to the data distribution and plan to investigate this further. 
+
+section{Conclusion}
+
+In this case study, we have proposed an approach to obtain local and fine grained control over prosody in neural generative models for speech. For this we quantize fundamental frequency, which is highly correlated with prosody information, into multiple bins. We infer this information employing hierarchical global and local latent variables in the model architecture.  We show that our approach generates appropriate emphasis at word level and significantly outperforms AuToBI in terms of flexibility.  
+
+\chapter{De-Entanglement by Divergence}
+
+\section{Visual Question Answering}
+
+Visual Question Answering (VQA) involves answering a natural language query about an image. Questions can be arbitrary and they encompass many sub-problems in computer vision: (1) Object recognition %- What is in the given image? 
+(2) Object detection %- Are there any cats in the image? 
+(3) Attribute classification %- What color is the cat if present ? 
+(4) Scene classification %- Is it raining? 
+(5) Counting. % - How many dogs are in the image? 
+VQA is characterized by wide ranging applications from helping visually impaired people through human machine interaction. It has the potential to serve as an effective media content retrieval framework. 
+%VQA is a challenging task since it requires reasoning across multiple modalities. It involves additional challenges of knowledge representation and reasoning both within and across them. For example,given a picture of cat, the question ‘Is the cat black in color?’  can be answered using the visual modality once the model understands that it is to check the color of cat. The information about what to look for comes from the text modality. So in the general setting, the VQA model has to combine the information from both the modalities and reason over this combined representation. 
+A primary form of implementing a VQA system would be to use a bucketing approach: by learning image and text features and fusing them to get an answer. In recent years, there have been several extensions to the trivial approach mentioned above \cite{fukui2016multimodal}; \cite{lu2016hierarchical}; \cite{yang2016stacked}; \cite{lu2015deeper} claim to learn good representations of abstract concepts needed to answer questions. However, it has been shown \cite{agrawal2017c} that most of the approaches capture surface level correlations and fail to handle unseen novel combinations during test time. 
+%Recently, the ability of VQA models to handle compositionality has been greatly sought after. Few models address the inferencing and reasoning abilities of VQA models that is provided by the properties of compositionality.
+
+In this work, we investigate approaches to improve compositionality in VQA, where we explicitly focus on learning compositionality between concepts and objects. Language and vision are inherently composite in nature. For example different questions share substructure viz \textit{Where is the dog?} and \textit{Where is the cat?} Similarly images share abstract concepts and attributes viz \textit{green pillow} and \textit{green light}. Hence it is vital not only to focus on understanding the information present across both these modalities, but also to model the abstract relationships so as to capture the unseen compositions of seen concepts at test time. Achieving this would then allow the model to generalize better by learning an inference procedure, resulting in true success on this task.
+
+In this work, we propose \textbf{\textit{JUPITER}} - \textbf{JU}stification via \textbf{P}ointwise combination of \textbf{I}mage and \textbf{T}ext based on \textbf{E}xpected \textbf{R}ewards, is built on top of the Neural Module Networks \cite{HuARDS17}. This is motivated from our hypothesis that generating captions can provide additional information to improve VQA. Additionally, JUPITER uses Reward Augmented Maximum Likelihood \cite{RAML}, which is improves caption generation.
+
+\section{Related Work}
+\noindent\textbf{Visual Question Answering}: \cite{KazemiE17} provided a strong baseline for VQA using a simple CNN-LSTM architecture, and achieved 64.6\% on the VQA 1.0 Openended QA challenge. This further proved that the dataset is biased. \cite{AishAgrawal17} introduced grounding to prevent the model from memorizing this bias. Similarly, \cite{li2018zero} used a zero-shot training approach to improve the generalizabilty of the model, and prevent the model to learn the bias. However, recently \cite{AgrawalKBP17} showed that most models degrade in performance when tested on unseen samples. In this work, we aim to tackle this lack of generalizability.
+\\
+
+\noindent\textbf{Neural Module Networks}: To the best of our knowledge, the work by authors in \cite{HuARDS17} and \cite{deepmodulenets} is the only work so far that explicitly uses a divide and conquer approach for compositionality. Natural language questions are best answered when broken down into their subparts. The authors use a similar intution and propose a modular architecture. This approach first parses the natural language question into linguistic components. Second, each component is assigned to a sub-module that solves a single task. Lastly, these modules are then composed into an appropriate layout that predicts an answer for each training example. Such a dynamic network not only helps learning object-object relationships well via compositionally, but also improves the reasoning abilities of the model. % Our approach  
+\iffalse
+\noindent\textbf{Multimodal Compact Bilinear Pooling }: \cite{fukui2016multimodal} propose to alter the fusion technique using the multimodal compact bilinear (MCB) pooling that calculates the outer product
+between two vectors thereby allowing for a multiplicative interaction
+between all elements of both vectors. The image and the text representations are randomly projected to higher dimensions and then using element-wise product in Fast Fourier Transform (FFT) space to convolve both vectors efficiently. A soft attention is done on the MCB to incorporate spatial attention to help identify important regions in the image. They also use MCB to encode variable length answers and then get a joint represenation over the answers and the image features. 
+\fi
+\\
+
+\noindent\textbf{Multitask Learning}:
+There have been number of works that explore multitask learning as an approach to joint learning of vision and language tasks. In one such work \cite{JustinJohnson2018}, authors  learn related regions of the image by simultaneously training three different semantic tasks - scene graph generation, object detection, and image captioning. A multi-task learning architecture was also proposed by \cite{zhao2018multi} for image captioning
+where they enable sharing of a CNN encoder and an LSTM decoder
+between object classification task and the syntax generation tasks.  \cite{ruder2017overview, lin2018multi} show mutlitask learning reduces overfitting in limited-resource settings, and can learn representations to improve downstream (part-of-speech tagging and name-entity recognition) tasks. Our purpose of joint training in multitask learning is to provide regularization on the learned features for VQA, with an added benefit of achieving better performance on the auxiliary task (of generating captions). 
+
+
+
+
+\noindent\textbf{Incorporating additional knowledge}: In \cite{chandu2018textually} authors show that incorporating captions helps resolve some ambiguities in visual question answering. In \cite{aditya2018explicit} authors first obtain captions and then use them for improving VQA via the framework of predicate logic. In \cite{wu2016ask} authors learn attributes from an image using an image labeling and then query using an external knowledge base. 
+
+
+\section{JUPITER - Justification by Pointwise combination of Image and Text based on Expected Rewards}
+ The key motivation of this approach [depicted in Figure: \ref{fig:jupiter}] was to manipulating the loss function to account for captions. We hyothesize that explicitly accounting for captions in the loss function will affect the downstream VQA predictions. Figure \ref{fig:jupiter} shows the framework architecture and functioning.
+%In this approach, we first present the systems we built that involve manipulating the loss function. At a higher level, we want to modify/augment the loss function utilizing captions thereby affecting the answers that get generated by the system. 
+
+%\subsubsection{Model Description}
+\subsubsection{Model Description}
+Our model uses Neural Module Networks (NMN), along with multiple proposed extensions. More specifically, we use the following extensions:
+%We have investigated the following settings to accomplish this:
+
+\begin{itemize}
+    \item \textit{Multitask Learning}: We modify the decoder to perform multiple tasks namely, caption generation and VQA. We use the attention grid generated by \textit{`Find'} module in the NMN, the encoded question layout, and the input image to generate captions in an auto regressive. Our hypothesis is that using this conditioning, we can force the model to generate attention grid that is suitable to both downstream tasks, in turn improving VQA performance. %\textbf{cite work where MTL improves both tasks.}
+    
+    %In this setting we aim to use caption generation as a secondary task in VQA. For this, we use the attention grid generated by the `Find' module in the module network. Once we obtain the attention grid, we generate captions in an auto regressive fashion conditioned on the attention grid and the original image. The intuition behind this setting is to force the model to generate an attention grid that is suitable to both generate answer to the question as well as caption the image. 
+    
+    
+    \item \textit{Conditional Generation}: As opposed to multitask learning approach, in this extension we explicitly provide the generated captions as input to VQA decoder. More specifically, we train the model to first generate a relevant image caption using  previously defined setup. Next we condition the answer decoder on the generated caption. The intuition is that providing the model with information more explicitly will help to predict answers based on this information. 
+    
+    %In this setting we try to use captions more explicitly compared to the implicit approach of multitask learning. Specifically, in this setting we train the model to generate both the caption to the image as well as answer to a question about the image. Having said that, in the current setting the answer is generated conditioned on the generated captions. The intuition behind this approach is that the model is now more explicitly forced to utilize the information from captions while answering the question.
+    
+    \item \textit{Re-weighting}: In this extension, we re-weight the answer hypothesis using the generated caption. We hypothesize that this will help the model to disambiguate between answer logits that have maximum entropy. 
+    
+    %In this setting we adjust the logits corresponding to the answers generated by the NMN using captions. The intuition behind this approach is to help the model disambiguate between confusable classes. For instance, if the model is confused between, say, glasses and eye glasses[gender is a better example], reweighting by captions might help the model discern the answer category.
+    
+    \item \textit{M-Hybrid and C-Hybrid}: In order to harvest complimentary benefits from our primary extensions, we also implemented two hybrid systems. M-Hybrid extension combined multitask learning and re-weighting approach, and the C-Hybrid extension combined conditional generation and re-weighting approach.%  We have also investigated combining Multi task Learning, Reweighting settings as M Hybrid and Conditional Generation, Reweighting settings as C Hybrid systems
+    
+    \item \textit{Reinforcement Learning}: This extension uses Reward Augmented Maximum Likelihood (RAML) as opposed to Maximum Likelihood (MLE) for generating captions. The intuition for this extension was to enable the agent to generate captions that will help the model to answer the given question. More specifically, the agent at each caption generation step can perform one of the two tasks: (1) Generate next word for the captions or (2) Answer the question based on caption generated so far. The agent is rewarded based on VQA accuracy. Since training with REINFORCE is known to be unstable, we use a baseline wherein we generate answers based on the final hidden state of a deocder trained using MLE. % Maximum likelihood trained decoder.
+    
+    %This setting is built on top of the C-Hybrid system. In this setting, we use Reward Augmented Maximum Likelihood to obtain captions instead of Maximum Likelihood. The intuition behind this system was to enable the agent generate captions that help it answer the question about given image. To train the model in this setting, we pose the problem of VQA as a reinforcement learning problem. Specifically, the agent has one of the two tasks: (1) Generate next logits for the captions or (2) Answer the question based on the already generated captions. The agent is rewarded based on the accuracy of VQA. Since training using REINFORCE is known to be unstable, we use a baseline wherein we generate answer based on the ultimate hidden state of a Maximum likelihood trained decoder.
+    
+\end{itemize}
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.44, frame]{images/jupiter.png}
+    \caption{Justification by Pointwise combination of Image and Text based on Expected Rewards}
+    \label{fig:jupiter}
+\end{figure}
+    
+    
+\subsubsection{Learning}
+We denote input question as \textit{Q} and input image as \textit{I}. \textit{L*} denotes the gold layout for \textit{Q} and \textit{C*} is gold caption for \textit{I}. We denote \textit{L} as the layout generated by NMN for \textit{Q}. \textit{C} is caption generated from JUPITER. We denote answer classes by \textit{y} and the correct answer class by \textit{y*}. \textit{T} is the training data samples of type (\textit{I, Q, y*}). Next, we describe the objective function for each extension in detail. 
+\begin{itemize}
+\item \textit{Multitask Learning}: We use a two-part objective function for multitask learning. The first part is generating  captions from the input and the second is generating answer logits from the input and the generated NMN layout. \\
+\begin{equation}
+    L(\theta) = \sum_{(I, Q, y*) \in T} logP_\theta(y | I, Q, L) + logP_\theta(C | I, Q)
+\end{equation}
+ 
+\item \textit{Conditional Generation}: This extension uses a similar objective function. However, we generate answer logits from the input, generated NMN layout as well as the generated captions.
+\begin{equation}
+    L(\theta) = \sum_{(I, Q, y*) \in T} logP_\theta(y | I, Q, L, C) + logP_\theta(C | I, Q)
+\end{equation}
+
+\item \textit{Re-weighting}: This extension uses a similar objective as conditioned generation. Further, for re-weighting we define new answer logits \textit{y'}. 
+\begin{equation}
+    y' = C_{T}  y
+\end{equation}
+where, C$_{T}$ is the final hidden state of generated caption, and y is the previous answer logits. The updated objective function is: 
+\begin{equation}
+    L(\theta) = \sum_{(I, Q, y*) \in T} logP_\theta(y' | I, Q, L, C) + logP_\theta(C | I, Q)
+\end{equation}
+
+\item \textit{Reinforcement Learning}: The agent transitions between generating next word in the caption and generating final answer. The agent receives minibatch VQA accuracy as its reward. The Baseline we use to stabilize the training and  the expected reward of our agent respectively are expressed as 
+
+\begin{equation}
+    L_{baseline}(\theta) = \sum_{(I, Q, y*) \in T} logP_\theta(y | I, Q, L, C) 
+\end{equation}
+
+
+
+\iffalse
+\begin{equation}
+   Reward = \sum_{n=0}^{N} ( r_n) 
+\end{equation}
+
+where N is the length of captions.
+\fi
+
+\end{itemize}
+We use cross-entropy loss to train the model. We jointly train our captions module in JUPITER alongside NMN, which learns a question layout \textit{L}. 
+
+\section{Dataset and Input Modalities}
+VQA dataset by \cite{AntolALMBZP15} has 265016 images, 614163
+questions.  The dataset consists of  82,783 training, 40,504 validation, and 40,775 test images. Each image has 3 questions on average and 10 ground truth answers. Questions as well as answers are open ended, accounting for a more real-world scenario. The questions are rich in a way, as the require the model to have complex reasoning and understanding abilities.
+
+
+\section{Results and Discussion}
+
+\iffalse
+ When presenting your results, try to follow the same sequence as you specified in the introduction of the Experimental Setup. If you stated 3 research questions, then it would be best to have 3 sub-sections in the Results and Discussion, one for each research question. Present in tables and/or figures your experimental results. It is not enough just to list the results you need to discuss them – what do they mean, what implications they have, how
+should they be interpreted in the broader context. If you want to make your results more convincing, where possible, include statistical tests to demonstrate the statistical significance of your findings. You should also include a discussion (if possible, with examples and figures) of the failure cases of the baseline models.
+\fi
+
+
+
+\begin{figure} [h]
+    \centering
+    \includegraphics[scale=0.3]{images/captions.png}
+    \caption{Qualitative Analysis from JUPITER: left image depicts a scenario where generating caption helped the model in selection of the right answer. Image in the center depicts a scenario where captions end up confusing the model. Image in the right most highlights an interesting scenario where the generated caption seems irrelevant.}
+    \label{fig:jupiter_qualitative}
+\end{figure}
+In this section, we discuss the results from our proposed approaches viz. JUPITER, VENUS and MARS, and compare them against our baselines. Table \ref{results_table} consolidates the results of our experiments. To better understand the performance of these models, we report the performance across different answer categories namely, Number, Yes/No and Other. The overall best baseline model for VQA is NMN by \cite{HuARDS17}.
+
+%In this section, we discuss the results of our proposed approaches in comparison to our baseline models on VQA. 
+%We first discuss the baseline results for each of the proposed approach domains. For a better understanding of the models performance, we provide the results by splitting the category of answers into number, yes/no and other type.  The final baseline that we aim to improve over is the one set by module networks. 
+section{Results: Baseline Models}
+The input to our baseline models is the image and the question. We do not use any external knowledge. Our results show that the baseline models have highest accuracy on the Yes/No questions. However, the Number type questions often require deeper understanding of the image, and so our baselines have lowest performance on them. Humans tend to have low agreement for Yes/No questions. We attribute this to question ambiguity or missing information in the image.It has to be noted that our implementation of the NMN baseline achieves better scores compared to the open source original implementation. This can be attributed to the presence of additional modules in our implementation, specifically OR, COUNT, FILTER, and EXIST modules.
+
+%Comparing across our baselines, NMN outperforms the rest. We believe this is since the model explicitly handles compositionality, providing better generalizability. Amongst the fusion baselines, the RNN performs worse than the VED baseline. We believe this is because VED captures latent representations which are more useful for VQA. 
+
+
+%Also, our implementation of the NMN baseline is much better than the scores on the original implementation repository. The incorporation of modules - OR, COUNT, FILTER, and EXIST as mentioned in the paper helped generate layouts which were more valid, therefore our implementation was better. 
+%The baselines all input only the question and the image, with no addition of external knowledge. Comparing across the three baselines, we see that the NMN is the best baseline we can get for VQA. 
+
+
+
+%Question Type:  number Accuracy: 26.352015732546707
+%Question Type:  yes/no Accuracy: 64.48818031885652
+%Question Type:  other Accuracy: 31.55374946530223
+%43.226183422213445 overall
+
+
+%Question Type:  number Accuracy: 23.310390036053754
+%Question Type:  other Accuracy: 26.649336974762264
+%Question Type:  yes/no Accuracy: 63.936228697086314
+%40.18450852590691 overall
+
+\begin{table}[!h]
+\centering
+\small
+%\scriptsize
+\begin{tabular}{@{}lllccc@{}}
+%\toprule
+%                      & &\textbf{Accuracy(\%)}                                      \\ 
+\toprule
+                      
+{ \textbf{Model}}  & {\textbf{{System}}} & {\textbf{{Input}}}    & \textbf{{Number}}             & \textbf{{Yes/No}}               & \textbf{{Other}}                \\ \midrule
+Human & Best & Image + Question & 83.39   & 95.77      &   72.67    \\
+Human & Worst & Image + Question  & 65.28          &    46.52   & 78.02      \\ \midrule
+NMN  & Baseline (Replicated)                      & Image + Question           &            23.31	         &           63.93          &          	26.65              \\
+NMN  & Baseline (Our implementation)                      & Image + Question           &            26.35	         &           64.49          &          	31.55              \\
+RNN  & Baseline                    & Image + Question           &    19.34                 &    57.82                 &          17.77           \\
+VED & Baseline                      & Image + Question             &     17.76                 &     58.00                &        10.43              \\ \midrule
+RNN  &          MARS           & Image + Question + Caption* &                23.09      &       57.88               &     18.22                 \\
+
+
+
+RNN   &          MARS          & Question + Caption*        &     21.72                 &             57.95         &      21.59                \\
+
+
+
+
+VED   &        VENUS        & Image + Question + Caption* &   19.25                   &     57.83                 &      10.10                \\
+
+VED   &        VENUS          & Question + Caption*        &            18.13          &        58.10              &        10.33 \\ 
+\midrule
+%NMN  & Conditional         & Image + Question + Caption &  & & \\
+%NMN  & Rescore             & Image + Question + Caption & 27.48 & 65.8  & 32.2 \\
+%NMN  & Multitask          & Image + Question + Caption &  & & \\
+NMN  & M-Hybrid            & Image + Question + Caption &     26.31                 &       	64.27	            &      30.43                  \\
+NMN  & C-Hybrid           & Image + Question + Caption & 27.48 & 65.8& 	32.2\\ 	
+
+NMN & JUPITER     & Image + Question + Caption &  32.82                 &       	67.95	            &      33.15                   \\\bottomrule
+\end{tabular}
+\caption{Results from human, baselines and proposed approaches. * denotes systems that employ Gold captions}
+\label{results_table}
+\end{table}
+
+section{Results: Proposed Models}
+Looking at the objective evaluation results from table \ref{results_table}, it is clear that incorporating captions leads to improvements across the approaches. This result empirically validates our hypothesis related to captions: Captions help VQA. To understand the extent of this, we have also performed ablation analysis wherein we have used just captions to answer the question ignoring the input image. Surprisingly, systems built in this fashion seem to perform better than our baselines. This leads to an interesting observation: \textit{Captions seem to contain supplementary and in some cases complementary information to the images themselves}. However, we acknowledge that proving such hypothesis would require additional experimentation. For instance, it would be interesting to perform similar ablation analyses employing computationally more powerful frameworks such as attention as baselines or adding more visual information such as ground truth bounding boxes. It is also interesting to note that the proposed approaches achieve better scores compared against the \textit{worst} human performance in Yes/No category.
+
+Our approach JUPITER outperforms all other approaches across all the categories. In addition, within the models employing module networks, the system employing reinforcement learning outperforms other approaches. This is in line with our hypothesis related to Reward Augmented Maximum Likelihood and raises interesting questions related to \textit{comparison between supervised approaches such as Maximum Likelihood and their reward based reinforcement counterparts}. It would be interesting to perform a much larger scale evaluation comprehensively comparing the effectiveness of these approaches in the context of downstream tasks. In figure \ref{fig:jupiter_qualitative}, we present some scenarios that highlight the way captions get utilized for answering question about the corresponding images.
+
+
+
+
+

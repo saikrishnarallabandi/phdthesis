@@ -1,0 +1,863 @@
+
+\section{Identification of Paralinguistic Styles - A Case study}
+
+Applications of Computational Paralinguistics have grown rapidly over the last decade and span both human-human as well as human-machine interactions. The ComPare Paralinguistics challenges have been playing a significant role in driving progress in the diverse use of paralinguistics. Besides the traditional task of affect recognition using suprasegmental non-verbal aspects of speech, novel tasks were introduced, such as, the detection of speaker traits, deception, conflict, eating and autism~\cite{schuller2013interspeech,schuller2010interspeech,schuller2015interspeech,schuller2017interspeech}. These challenges have shown that paralinguistic information can be used not only  to identify affect but also clues that are helpful to detect abnormalities indicating disorders. Paralinguistic information also has applications in other domains of speech processing such as dialog systems, speech synthesis, voice conversion, assistance systems, and eHealth systems. 
+
+
+In this paper, we present our approach to three of the INTERSPEECH 2018 ComPare sub-challenges~\cite{Interspeech2018}: prediction of 1) self-assessed affect, 2) atypical affect and 3) types of crying.
+The \textit{Self-Assessed Affect \textbf{(S)} Sub-Challenge} and the \textit{Atypical Affect \textbf{(A)} Sub-Challenge} aim to classify affect from speech. In \textbf{(S)} ground-truth labels are provided by the speaker itself. The prediction of affect from speech oriented by the own assessment, could be used as a support in eHealth systems for individuals with affective disorders, such that a therapist can monitor the emotional state of their clients. In \textbf{(A)} the goal is to determine the affect of mentally, neurologically, and/or physically disabled individuals. The challenge is that some disorders also affect way people express their emotions. However, having a system able to detect distress in workplaces of disabled individuals can be helpful to make supervisors aware to suggest breaks or divide tasks in smaller ones, improving the emotional state of workers and therefore their concentration. The \textit{Crying \textbf{(C)} Sub-Challenge} focuses on using paralinguistic information to identify affect in vocalisations of infants. Experts in the field of early speech-language development labeled audio-video clips into three classes of vocalisations: neutral/positive , fussing, and crying.       
+
+\begin{comment}
+Par3: What are the baseline models provided? what do they use?
+The features used in the baselines presented by the organizers of the ComParE Challenge 2018 are composed by a standard set of segmental, suprasegmental features and also utterance level acoustic representations. 
+\end{comment}
+Typical approaches for classification and prediction of paralinguistic features include extraction of low level descriptive features followed by a machine learning model. Examples of low level descriptors are Mel-Frequency Cepstral Coefficients (MFCCs), log Mel-scale filter banks energies (FBANK) and several suprasegmental acoustic features that can be extracted using the openSMILE tool~\cite{opensmile2010}. These features act as general purpose feature set and are expected to achieve competitive results in a wide range of paralinguistic problems.  However, derived neural representations using unsupervised learning have shown impressive results on many speech and image based tasks recently~\cite{aytar2016soundnet}. These features usually embed the task relevant information from the entire utterance in a compact form. Also end-to-end learning models have been employed in affect classification using Long Short-Term Memories (LSTMs) or Gated Recurrent Units (GRUs)~\cite{trigeorgis2016adieu,Interspeech2018}. 
+
+
+Motivated by this, we explore different utterance level representations and end-to-end approaches in the context of sub-challenges. Specifically, we investigate the significance of using both utterance level acoustic and derived linguistic features. We further employ data augmentation using utterance emphasis (see section \ref{subsec:emphasis}) and random utterance segmentation (section \ref{subsec:augmentation}), as a strategy to cope with class imbalance. For obtaining linguistic features we first obtain the text for each of the utterances using a pretrained English ASPire model. We then train a Recurrent Neural Network language model on the obtained text at the phone level and use the representation at the hidden state as the embedding of the utterance. Apart from this, we explore the applications of various Convolutional Neural Network models and chart their performance. It has to be noted that even though acoustic and phonetic embeddings use identical  inputs, they differ in the higher level features learned internally. Therefore we believe that they complement each other producing a superior fusion result. 
+
+
+\section{Framework}
+
+In this section, we present different features and classifiers used for all three sub-challenges. We used two different classification models: 1) Bidirectional LSTM using low-level features which uses temporal information , and 2) Random Forest classifier or SVM Classifier using high-level features, which are utterance based, combined with utterance level embeddings. 
+
+
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=200pt]{LatexDiss/Dissertation/images/soundnet_original.jpg}
+  \includegraphics[width=200pt]{LatexDiss/Dissertation/images/modifiedSoundnet.png}
+  \caption{Original SoundNet architecture~\cite{aytar2016soundnet} on top and modified SoundNet architecture at the bottom. The modified version uses 2 layers of 512 fully connected (fc) units and a softmax layer of 3 units.}
+  \label{embedding_extraction}
+\end{figure}
+
+\subsection{Temporal classification}
+
+
+\subsubsection{Low level features}
+
+For acoustic feature extraction we divided each utterance (length is \SI{8}{\second}) into \SI{25}{\milli\second} segments with a \SI{10}{\milli\second} frame shift. For each frame we extract 13 mel-frequency cepstral coefficients and their deltas and double-deltas obtaining a feature vector of 39 dimensions. We further extract the log pitch ($f0$) and strengths of excitation (5 dim) \cite{yoshimura2001mixed}. In addition, we also obtain 40 dimensional filter banks and 23 dimensional PLP based features. Filter banks have been obtained using the open source toolkit Kaldi~\cite{kaldi2011} with `dithering' enabled as it was shown to be robust in other experiments. We have also extracted several features using Opensmile toolkit~\cite{opensmile2010} and performed singular value decomposition with the intention of obtaining an acoustic representation. This procedure also results in a dense low dimensional representation.  This representation was later used  in combination with the high level features we obtained in the spirit of early fusion. 
+
+\subsubsection{Classifier}
+Using all previously mentioned features, we train a 2 layer bidirectional LSTM network with 512 units in each cell. This is followed by 2 fully connected layers each with 512 units. The final softmax layer dimensions were dependent on the sub challenge. The network is trained by minimizing the expected divergence between the classes using cylindrical SGD~\cite{smith2017cyclical}. 
+
+\subsection{Utterance-based classification}
+Recently, end-to-end approaches have shown impressive results on many speech based tasks~\cite{trigeorgis2016adieu}. Specifically combinations of CNN and fully connected layers with a global pooling layer have obtained human level recognition rates on speaker and language recognition tasks. The global pooling layer functions as averaging sequential inputs therefore aggregating frame level representations to utterance level. This is advantageous for end-to-end learning. 
+
+\subsubsection{Extracting high level acoustic representations using  Modified SoundNet}
+
+SoundNet~\cite{aytar2016soundnet} is a convolutional network operates on raw waveforms and is trained to predict the objects and scenes in video streams at certain points.  After the network is trained, the activations of its intermediate layers can be considered a representation of the audio suitable for classification. It has to be noted that SoundNet is a fully convolutional network, in which the frame rate decreases with each layer. Since we need to predict the emotions with reasonable recall, we cannot extract features from the higher layers of SoundNet directly. 
+
+
+The original SoundNet network has seven hidden convolutional layers interspersed with maxpooling layers. Each convolutional layer essentially doubles the number of feature maps and halves the frame rate. The network is trained to minimize the KL divergence from the ground truth distributions to the predicted distributions. In the original SoundNet architecture, the higher layers have been subsampled too much to be used directly for feature extraction. In order to fully exploit the information in the higher layers, we train a fully connected variant of SoundNet (see Fig.~\ref{embedding_extraction}). Instead of using convolutional layers all the way up, we switch to fully connected layers after the 5th layer.  We have also changed the input sampling rate to \SI{16}{\kilo\Hz} to match the provided data. 
+
+\subsubsection{Linguistic features}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\linewidth]{LatexDiss/Dissertation/images/lstmlm.png}
+  \caption{Architecture for extracting textual embedding. The hidden layer obtained after passing all phonemes of an utterance, is used as embedding of the same utterance. The phonetic decoding is then obtained using a pre-trained acoustic model.}
+  \label{lstmlm}
+\end{figure}
+
+An informal analysis of the recordings indicated that the content being spoken plays a non trivial role in the valence of the utterance. A simple manifestation of this is the distribution of filled pauses and hesitations in the provided data across the classes. In the Self Assessed  Affect dataset, examples belonging to the class `low' have higher number of such irregularities compared to the other two classes. Note that these features are not extracted for the Crying dataset. Therefore we hypothesize that using an off the shelf phoneme decoder to recognize such events might be beneficial. For this we first obtain the text at the phoneme level for each of the utterances using a pretrained English ASPire model from the toolbox Kaldi~\cite{kaldi2011}. We then train a Recurrent Neural Network language model on the obtained text at the phoneme level and use the representation at the hidden state as the embedding of the utterance. The architecture is depicted in Fig. \ref{lstmlm}.  
+
+\subsubsection{Classifier}
+We obtain the prediction scores from our models using either a Random Forest Classifier or a one-vs-rest classifier implemented using a binary SVM classifier depending on the performance. It is a known fact that SVM models perform better on sparse data than does trees in general. Therefore depending on the data augmentation techniques, we choose the classifier. 
+
+\subsection{Data Manipulation \& Enhancement}
+In this section we present various data engineering approaches that make the data more suitable for our models. Specifically, we explore approaches that aim to (a) obliterate the imbalance in class, (b) extract derived features which might help in distinguishing between the classes, (c) downsizing and normalizing on the duration of clips, etc. 
+
+\subsubsection{Class balancing by data restriction}
+In order to address the class imbalance present in the original data, we reduce the number of samples used for the classes that are dominant in the dataset. We hypothesize that the skewness of the original data causes low recall for classes that are in minority. Therefore, we study the effects of attempting to artificially balancing the classes by using less samples of dominant classes.
+
+\subsubsection{Class balancing by data augmentation}
+\label{subsec:augmentation}
+The objective function we minimize in this approach is the expected divergence between the classes. An analysis of the original data points to the imbalance between the classes: For example, in Self Assessed Affect subchallenge, there are almost 3 times less number of examples for the `low' class compared to the other classes in the training set.  To alleviate this, we look at approaches to augment the existing data. Since our model operates on the sequence of frames, we hypothesize that segmenting the audio data into chunks~\cite{agrima2017detection} exposes the model to different distributional properties. We obtain 4 times the original data for the class with  less number of examples in Self Assessed Affect challenge by chopping the original signal between (0-2), (0-4), (0-6) and (0-8) seconds.
+
+\subsubsection{Deriving Speaker Identity}
+Speaker normalization and adaptation have been widely documented as significant for a speech recognition system. As the original data did not have speakers tagged per utterance, we have tried to do speaker recognition using length normalized i Vector.  i-Vectors are low-dimensional representation of GMM supervectors  in a single subspace which have been formulated to include all characteristics of speaker and inter-session variability. Mathematically, given an observation set $X_s$, the adapted mean super-vector $m_s$ is modeled as,
+
+\begin{equation} \label{frame_replacement_basic}
+\begin{split}
+   m_s = m_0 + \textbf{T}w_s + \theta \\ 
+\end{split}
+\end{equation}
+
+\noindent where $m_0$ is the Universal Background Model (UBM) supervector, and $\theta$ is the residual term which accounts for the variability not captured by T. Following Garcia-Romero and Epsy-Wilson~\cite{garcia2011analysis}, we perform a within class covariance normalization followed by length normalization of i vectors. These have been shown to `gaussianize' the distribution and improve the performance of PLDA. iVectors have been extracted after log energy based voice activity detection on the utterances. This system was built within framework of Kaldi toolkit\cite{kaldi2011}.
+
+\subsubsection{Improving contrastiveness of features}
+\label{subsec:emphasis}
+We have tried to improve the contrastive nature among the classes artificially. An informal analysis of the recordings from Self assessed affect subchallenge led to the observation that the utterances with high valence were also relatively at a higher speed compared to the utterances with lower rate. Therefore we increased the rate of speech for the high valence utterances by 10 percent while simultaneously decreasing the rate of speech for low valence utterances by 10 percent. We performed similar perturbations with respect to pitch: boosting the pitch of the samples from `high' class and lowering the pitch for the samples from `low'. The samples for `medium' class have not been subjected to any modification. 
+
+\subsection{Early Fusion - Combining different representations}
+
+We have experimented with a feature level fusion of Soundnet layer 5 and ResNet50~\cite{Resnet2015} features extracted from the audio files. Resnet has been trained on around 1.28 images from the Imagenet dataset and has a top 5 error of 3.57\% beating all other CNN image classifiers.  We aim to systematically study the strategies of combining representations from multiple feature extractors. 
+
+\begin{comment}
+\subsubsection{Normalizing length of audio files}
+The audio files in the Atypical Affect Assessment  have variational lengths. To bring all audio files to the same scale of duration, we clip all the audio files to a maximum of 3s which is the average length of duration of all audio files. Though this leads to some information loss, it could probably help in enhancing the presence of weaker class files. \end{comment}
+
+
+
+\section{Datasets}
+
+\subsection{Self-Assessed Affect Recognition}
+The dataset used in this sub-challenge is the Ulm State-of-Mind in Speech (USoMS). It contains recordings of 100 students. The labels were obtained from the subjects themselves obtaining 3 classes: low, medium, and high.The class distributionfor combined train and dev sets are: 716 high, 698 medium, and 174 low. This highlights skewness in the data distribution.
+
+\subsection{Atypical Affect Recognition}
+The dataset comprised of a total of 10677 audio files out of which there are 3342 training, 4186 validation files and the remaining test files. There are four target classes that pertain to the four emotions - neutral, happy, sad and angry. The distribution of classes is again skewed with 5209, 1708, 516 and 175 being the total numbers of neutral, happy, sad and angry labels on the train and validation sets.
+
+\subsection{CRYING}
+
+This dataset is obtained from the Cry Recognition In Early Development (CRIED) database. It consists of 5588 vocalizations of 20 infants sampled at 44.1kHz in mpeg format. The objective is to identify three mood-related types of infant vocalization - neutral/positive, fussing and crying. The class distribution is as follows: 2292 cases of neutral/positive mood, 368 files of class fussing and the remaining 178 belonging to the class crying. The dataset is clean of vegetative sounds such as breathing sounds, smacking sounds, hiccups and so on. Further details about the datasets can be obtained from~\cite{schuller2018compare}. 
+
+
+% Baseline Result: 56.2\%	
+
+% ===================================================
+
+\section{Experiments}
+
+In the following we present the preliminary  results obtained using the systems we investigated on the Self Assessed Affect sub challenge. We further present the results of UAR for blind tests for all the three sub-challenges. 
+
+
+\begin{comment}
+
+\begin{table}[h]
+\centering
+\caption{UAR for data filtering experiments}
+\label{filtering}
+\begin{tabular}{@{}lllr@{}}\toprule
+\multicolumn{3}{l}{Data split}                                           & UAR[\SI{}{\percent}]    \\ \cmidrule{1-4}
+\multirow{6}{*}{100\% Low} & \multirow{3}{*}{100\% High}   & 90\% Medium & \SI{56.8}{} \\
+                           &                               & 70\% Medium & \SI{55.0}{} \\
+                           &                               & 40\% Medium & \SI{52.1}{} \\ \cmidrule{2-4}
+                           & \multirow{3}{*}{100\% Medium} & 90\% High   & \textbf{\SI[detect-weight]{59.1}{}} \\
+                           &                               & 70\% High   & \SI{56.8}{} \\
+                           &                               & 40\% High   & \SI{51.5}{} \\ \cmidrule{1-4}
+\multicolumn{3}{l}{All Data}                                             & \SI{57.2}{} \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{comment}
+\subsection{Class balancing by data restriction(System CBR)}
+
+ We systematically try to reduce the data points from the classes with higher number of examples. The results from this experiment are depicted in Table \ref{filtering}. 
+
+\begin{table}[h]
+\centering
+\caption{UAR for class balancing by data restriction}
+\label{filtering}
+\scalebox{0.85}{
+\begin{tabular}{@{}lllr@{}}\toprule
+\multicolumn{3}{l}{Data split}                                           & UAR[\SI{}{\percent}]    \\ \cmidrule{1-4}
+\multirow{6}{*}{100\% Low} & \multirow{3}{*}{100\% High}   & 90\% Medium & \SI{56.8}{} \\
+                           &                               & 70\% Medium & \SI{55.0}{} \\
+                           &                               & 40\% Medium & \SI{52.1}{} \\ \cmidrule{2-4}
+                           & \multirow{3}{*}{100\% Medium} & 90\% High   & \textbf{\SI[detect-weight]{59.1}{}} \\
+                           &                               & 70\% High   & \SI{56.8}{} \\
+                           &                               & 40\% High   & \SI{51.5}{} \\ \cmidrule{1-4}
+\multicolumn{3}{l}{All Data}                                             & \SI{57.2}{} \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+ 
+
+
+\subsection{Speaker identity based experiments(System SI)}
+
+
+\begin{table}[h]
+\centering
+\caption{UAR for Speaker identity based experiments}
+\label{spk_id}
+\scalebox{0.9}{
+\begin{tabular}{llcc}
+                            &          & \multicolumn{2}{c}{Normalization} \\ \cmidrule{3-4}
+                            &    UAR[\SI{}{\percent}]      & used           & not used         \\ \toprule
+\multirow{2}{*}{Speaker ID} & used     & \SI{62.2}{}         & \SI{54.0}{}           \\
+                            & not used & \SI{61.1}{}         & \textbf{\SI[detect-weight]{64.7}{}}     \\
+\bottomrule                            
+\end{tabular}
+}
+\end{table}
+
+
+Since the classifiers we use are discriminative in nature, we experiment with  two ways of incorporating speakers or subject specific information: 
+
+\begin{itemize}
+
+\item (1) We add the identity of the speaker as an extra dimension thus forcing the model to build speaker specific models.  For example, in case of decision trees, this forces the model to split at the identity of speaker.
+
+\item (2) Normalizing with respect to the speaker, following the procedure typically used in speech recognition. 
+
+\end{itemize}
+
+The results from these experiments have been depicted in table \ref{spk_id}. 
+
+\subsection{Improving contrastiveness of features(System CTR)}
+We have explored two ways of artificially increasing  the contrastiveness of the features, based on observations on the original data. Since the different classes appear to have a different distribution of artifacts such  as hesitation, we have tried to use signal processing techniques to further separate the classes. Specifically, we have used festival toolkit~\cite{black1998festival} to decompose the signal into its spectrum, pitch and then apply class specific modifications to the utterances in the train set. The waveform was reconstructed using the vocoding framework within festvox voice building tools. We have used WSOLA~\cite{verhelst1993overlap} to accomplish duration based manipulations. The results from these experiments are shown in the table \ref{emph}.
+
+\begin{table}[H]
+\centering
+\caption{UAR for Emphasis and Data Augmentation Experiments}
+\label{emph}
+\begin{tabular}{lr}
+Augmentation [\SI{}{\percent}] & UAR [\SI{}{\percent}]       \\ \toprule
+100  & \SI{54.4}{}                    \\
+200                                        & \SI{58.3}{}                    \\
+300                                        & \SI{57.2}{}                      \\
+400                                        & \SI[detect-weight]{58.8}{} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Blind Test Results and Discussion}
+
+The evaluation results on blind test set for the three sub-challenges is mentioned in the table \ref{blind}. Based on the preliminary experiments, system \textbf{SI} appears to achieve a significant boost over the baseline before fusion. This seems plausible due to the nature of task at hand: emotions and intent have been known to be speaker specific. System \textbf{CTR} surprisingly does not have the expected gain in performance. We hypothesize that even though the premise of improving the class statistics by enhancing contrastiveness is valid, the manner in which we have performed the manipulation might be flaky. For example, given manipulating pitch might not be the  best way to improve contrastiveness when the classes are separated by valence. However, we do see improvements with the Atypical affect subchallenge. Specifically, the recall for the class angry seems to improve with very little augmentation. Another observation with respect to system \textbf{CBR} is that the `neutral' class seems to be very sensitive to any subsampling. 
+
+\begin{table}[h]
+\centering
+\caption{UAR Blind test summary} 
+\label{blind}
+\begin{tabular}{|c|c|}
+  \hline
+Sub-challenge & UAR \\
+  \hline
+Self Assessed Affect  & 48.3\\
+ \hline
+Atypical Affect  &  34.2	\\
+ \hline
+CRYING   & 71.406\\
+ 
+  \hline
+\end{tabular}
+\label{table_systems}
+\end{table}
+
+\section{Sleepiness Detection}
+
+
+\subsection{Ordinal Data}
+
+A significant amount of data generated by our world, from natural forces to human behavior, is effectively continuous.
+As a result, humans' tendency to bin continuous data \cite{tee2018brain}
+has given rise to enormous amounts of ordinal data for applications ranging from healthcare to recommender systems \cite{Marateb2014ManipulatingMS, Melville2017}.
+Thus, while humans tend to assign hard labels, the underlying data generally lies on a continuous spectrum.
+In order to perform effectively, statistical models must be able to capture the underlying data distribution rather than the humans' potentially subjective, and consequently noisy, discrete values. In a limited data setting where using sheer data size to generalize models is not an option, alternative techniques are required to make full use of the available data.
+
+% define the specific research challenges that have not been addressed in prior work
+Leveraging the ordinal nature of a dataset as opposed to treating the classes as categorical is one effective approach for extracting more information from a limited set of samples. % TODO cite
+Many ordinal regression techniques have been proposed throughout the long-standing history of the field
+and have been traditionally applied to simpler tasks and non-deep models \cite{chu2005ordinal, rennie2005ordistic}.
+For complex data % like the Sleepiness/audio dataset
+that generally require deeper architectures, the large number of parameters in these ordinal techniques % e.g. loss funcs
+can tend to result in overfitting. 
+Thus, simpler approaches are required in order to effectively integrate ordinal techniques into deep networks.
+
+% Third, explain your proposed work and how it will help solving (or better understanding) the specific research challenges
+While treating continuous values as ordinals has good bearings intuitively, it is hard to train deep models that can effectively work with such data since standard classification techniques in deep learning are categorical. Hence, they cannot for example take into account the fact that class 2 is closer to class 3 as opposed to class 8. In order to effectively capture this information in a model, one approach is to construct an output distribution that reflects the relationship between classes. Soft labeling is one such technique that has been empirically shown to be effective with noisy ordinal
+data \cite{zhang2019fsim}.
+Our proposed approach builds on this idea of leveraging ordinal relations to generalize from limited noisy data, namely via learning the relative distances between the encoded representations of different data samples. 
+
+
+\subsection{Ordinal Regression}
+
+Each audio sample in the dataset is labeled with a number based on the KSS scale \cite{shahid2012kss}.
+Since numbers on this scale follow a clear ranking, approaches in ordinal regression can be applied to this task.
+Namely, instead of penalizing all incorrect labels equally as in traditional multi-class classification, we can leverage the intuition that an incorrectly predicted class $\hat{y}$ that is numerically closer to the actual class $y$ should be penalized less than a farther $\hat{y}$.
+Two primary ordinal regression techniques that have been applied to statistical models include ordistic loss, which represents the output distribution as a mixture of Gaussians, and a thresholding-based approach which learns the decision boundary between adjacent classes \cite{rennie2005ordistic}. Since both approaches involve many parameters, utlizing them in a deep architecture can lead to overfitting.
+% These techniques have traditionally been applied to non-neural models, and in this work we explore ... deep architectures.
+
+Soft labels have been shown to not only work effectively with neural models, but also help with convergence and training on noisy data \cite{Hinton2015DistillingTK, zhang2019fsim}. % https://www.cs.toronto.edu/~hinton/absps/distillation.pdf
+% todo also cite provost intro
+% and complex data
+While not originally created for ordinal tasks, empirical results % cite provost
+suggest that soft labelling can be effectively applied to ordinal regression problems \cite{zhang2019fsim}.
+In this paper, we show why soft labelling is particularly effective for ordinal tasks and propose a general deep approach that learns ordinal relationships through soft labels and relative distance constraints.
+
+\subsection{Deep Metric Learning}
+
+Deep metric learning (DML) encompasses approaches that capture the similarity between datapoints via deep architectures. % consider citing https://www.cv-foundation.org/openaccess/content_cvpr_2016/papers/Song_Deep_Metric_Learning_CVPR_2016_paper.pdf
+One such technique is the triplet loss function \cite{schroff2015facenet},
+which constrains models to map input data from the same class to similar locations in an embedding space and data from different classes to separate locations. Specifically, the loss function for a triple ($x_a$, $x_p$, $x_n$) with respective classes $y_a=y_p \neq y_n$ is given by
+$$\lVert f(x_a) - f(x_p) \rVert_2^2 - \lVert f(x_a) - f(x_n) \rVert_2^2 + \alpha,$$
+where $\lVert \cdot \rVert$ is the Euclidean norm, $f(x)$ is the encoded representation of $x$, and $\alpha$ is a hyperparameter representing the margin between same-class and different-class pairs.
+
+Previous works have shown the effectiveness of triplet loss and Siamese architectures in limited data settings \cite{koch2015siamese}. % todo cite some few shot learning papers + maybe add reason why
+Siamese networks perform well in such cases since they keep the number of model parameters low through weight sharing and effectively increase the dataset size through accepting multiple inputs at a time.
+Additionally, by encouraging input representations to cluster spatially by their class labels, these approaches can implicitly accentuate features useful for downstream classification tasks.
+% DML can be used to generate an embedding space in which distances between examples correspond to the label relationships. This provides a mechanism to reduce the influ- ence of factors other than emotion.
+
+Like many other DML techniques,
+triplet loss is designed for categorical data, and consequently does not leverage any properties of ordinal data. 
+% for example / i.e. doesn't capture ordinal relations
+We propose an augmented % extension of this 
+loss function, which we refer to as ordinal triplet loss in later sections, that captures the ordered nature of a collection of data through accounting for % factoring
+the absolute difference between class labels in its relative distance constraints.
+% To leverage ordinal characteristics of the data, we reformulate ordinal loss as penalizing the model when further classes are mapped closer together than closer classes.
+
+\subsection{Proposed Approach}
+
+
+
+\iffalse
+Proposed Approach: This is the main section of the paper. This is where the technical novelty of
+your paper should be clearly explained and motivated. Whenever possible, take the time to
+remind people how your proposed model/approaches address the challenges highlighted in the
+introduction. Also, make sure that the novelty of your two approaches is highlighted (i.e., what
+part was already done vs. what part is novel).
+o Model Description: formalize mathematically your proposed model or approach. This
+should include the mathematical definition of the variables involved in your problem
+(e.g., input variable x and labels y). You should also include an objective function
+describing what you are modeling (e.g., P(y|x)). While this section may be relatively
+short (e.g., half a page), you should be consistent with your notation later in the paper.
+o Learning: Describe how you are learning the parameters of your model. State clearly
+your loss function and the learning algorithm used in your experiments. If you have
+enough space, give derivation of your gradient, at least for some of the main model
+parameters.
+
+Experimental Setup: Start this section by clearly stating what your main research questions are.
+Whenever possible, try to design experiments to test specific research hypotheses or questions.
+If you claimed that components A and B are the main novelties of your model, then you should
+have ablation experiments that compare your model with and without A (and similarly for B).
+Your experiments should also include comparison with baseline models (from your midterm
+report). Furthermore, the experiments should give the reader an understanding of the effect of
+your model hyper-parameters. For example, plot performance of your model with different
+regularization factors. Finally, make sure to write the experimental setup method in such a way
+that a person not familiar with your work would be able to reproduce your model just by
+reading the paper.
+
+Things that you should mention in the experimental setup:
+o Dataset and Input Modalities: Describe the dataset(s) you are using in your
+experiments. Describe the input modalities and annotations available in this dataset.
+Specify which subset of these modalities and annotations you are planning to use.
+o Multimodal baseline models: Describe at least one multimodal baseline model for your
+research problem. If possible, these baseline models should be from recently published
+papers. If you are planning to perform ablation experiments (e.g., your model without
+component XX), this is a good place to explain these different models. Describe in text
+how these models are optimized and how inference is performed.
+o Experimental methodology: Describe your experimental methodology for evaluating
+your proposed approach and the multimodal baseline model(s). This should include the
+way you split your dataset for training, validation and testing. It should also include any
+details about the hyper-parameters and the evaluation metrics. This section should
+include (in a concise form) all the information needed to replicate the experiments.
+
+\fi
+
+% start w y slab and y otl is best
+
+Our proposed OTL approach is mainly comprised of two parts: soft labelling and an ordinal triplet loss function.
+Previous works have demonstrated the superiority of soft labels over hard labels for tasks with noisy data \cite{zhang2019fsim}. % cite provost and others, and maybe cite hinton if say limited
+In Section 3.1., we show that soft labels are especially suited for ordinal tasks via a statistical interpretation.
+The ordinal triplet loss function serves to encourage the model to learn representations specific to the ordinal task at hand by adding a loss constraint to a hidden layer.
+We discuss the formulation of the loss function in Section 3.2 and how to integrate it into a deep architecture in Section 3.3.
+
+% slab for anchoring embeddings, tri for tuning relative distances
+
+\subsection{Soft Labels}
+
+Results from Zhang et al \cite{zhang2019fsim}
+suggest that soft labels are well-suited for tasks with noisy, complex data.
+We reformulate their approach through a statistical lens in order to evince its particular effectiveness for ordinal tasks.
+
+In a $K$-class ordinal task, we can uniformly scale a class label $k \in \{0, 1, \dots, K-1\}$ to the interval $\left[0, 1\right]$, i.e. mapping class $k$ to $k/(K-1)$, without losing generality. Additionally, through associating a datapoint in original class $k$ with a pair $(k/(K-1), 1-k/(K-1))$ that sums to 1, we can reinterpret the class as a combination of binary labels. In other words, we can interpret the datapoint as being a combination of $k/(K-1)^{th}$ of a class-$0$ datapoint and $1-k/(K-1)^{th}$ of a class-$1$ datapoint.
+% Conceptually, this corresponds with intepreting a blah in this task as blah
+Assuming that the binary classes are generated from a Bernoulli distribution, % with parameter $p$, 
+we can express the likelihood of a set of data $\{x_1, x_2, \dots, x_B\}$ with respective classes $\{y_1, y_2, \dots, y_B\}$ as
+$$\prod_{i=1}^B f(x_i)^{\frac{y_i}{K-1}}(1-f(x_i))^{1-\frac{y_i}{K-1}},$$
+where $f(x_i)$ is the model output for datapoint $x_i$. We can thus maximize this likelihood by training the model using the class pairs via cross-entropy loss. During test time, we invert the class-to-soft-label function to retrieve class predictions, namely mapping a pair $(\hat{p}, 1-\hat{p})$ to $\lceil \hat{p}(K-1) \rfloor$, where $\lceil\cdot\rfloor$ is the nearest integer function.
+
+Training the model in this matter naturally penalizes class predictions more the farther they are from the true class, thus capturing the ordinal nature of the data.
+In fact, due to the curvature of the log likelihood function, loss penalties approximately increase exponentially with respect to distance to the middle class, capturing the central tendency bias inherent in datasets using the Likert scale. % like the Sleepiness corpus. todo cite central tendency bias
+% can add plot here if need to fill more space
+% ~ note uniformly distributed along
+% thus soft labels are great for noisy ordinal data 
+% plus traditionally require multiple labels and then avg, but not in this case
+It is worth noting that this soft label formulation works with ordered data in general, including continuous data.
+
+\subsection{Ordinal Triplet Loss}
+% otl captures relative distance
+
+Ordinal triplet loss augments the traditional triplet loss function \cite{schroff2015facenet}
+by capturing ordinal relations, thus further utilizing properties in a limited corpus.
+Namely, the function adds a constraint ensuring that datapoints with farther class labels have larger distances between them in their embedded space.
+Each input triplet is comprised of an anchor sample $x_a$, another sample $x_s$, and a sample $x_d$ constrained to have a class farther from $x_a$ than $x_s$. In other words, their respective class labels satisfy $$\lvert y_a-y_d \rvert > \lvert y_a-y_s \rvert+\alpha,$$
+where $\alpha \in \mathbb{N}$ is a hyperparameter.
+Since $x_s$ does not need to have the same class as $x_a$, the resulting set of possible triplets is noticeably larger than that of the traditional triplet loss formulation. 
+When appropriate techniques described in Section 3.4
+are applied to select which triplets to train, this expanded set of triplets can help the model generalize better.
+The ordinal triplet loss for a triplet ($x_a$, $x_s$, $x_d$) is given by
+$$\sigma(\lVert f(x_a)-f(x_d) \rVert-\lVert f(x_a)-f(x_s) \rVert),$$
+where $f(x)$ is the encoded representation of $x$, $\lVert \cdot \rVert$ is the Euclidean norm, and $\sigma$ is the logistic function, given by $\sigma(x) = \log(1 + e^{-x})$.
+Conceptually, the loss function penalizes cases where the model maps the $x$'s to representations where $x_a$ is closer to $x_d$ than $x_s$. The logistic function serves to make the loss function differentiable. %, as used in. % todo consider citing a paper if have time to find one
+% TODO inherently captures relative distance relations, + show diagram in a later section
+Like the soft label approach, ordinal triplet loss can be applied to continuous data as well.
+
+\subsection{Network Architecture}
+% Multi-Task Framework
+
+We use an architecture similar to that of Zhang et al \cite{zhang2019fsim}
+to train our model, replacing their loss functions with ordinal triplet loss. 
+Namely, the model receives triplet inputs and jointly optimizes the ordinal triplet loss function, which uses all three inputs, and the soft label cross-entropy loss, which uses only the anchor samples.
+% add diagram when use tuple loss
+Each iteration, the model embeds all inputs using an encoder $f$ before applying ordinal triplet loss, and passes the anchor sample embeddings through an MLP $g$ before applying the soft label cross-entropy loss.
+% talk more about batchnorm when sure that helps
+We add a batch norm layer between $f$ and $g$ to help with convergence.
+The loss function for a batch $\{(x_1, y_1), (x_2, y_2), \dots, (x_B, y_B)\}$ is given by
+$$\frac{1}{B}\left(\sum_{i=1}^B l_s(x_a^{(i)}, y_a^{(i)}) + \beta \sum_{i=1}^B l_t(x_a^{(i)}, x_s^{(i)}, x_d^{(i)}) \right),$$
+where $l_t$ is the ordinal triplet loss function, $l_s$ is the soft label cross-entropy loss function, and $\beta$ is a hyperparameter describing how much to weigh the ordinal triplet loss.
+
+Conceptually, $f$ serves to separate embeddings in a manner that captures ordinal relations % while restricting the parameter space for the network weights
+in order to help $g$ in the downstream classification task.
+% ~~~ by helping with convergence, soft labels help triplet loss converge
+As with other Siamese architectures \cite{koch2015siamese},
+the weight sharing between elements in each triplet and the increased number of possible inputs via grouping samples into tuples aims to help with training effectively on limited amounts of complex data.
+% as mentioned above, otl can be used with continuous data
+
+\subsection{Implementation Details}
+
+Since the number of possible triplets is cubic with respect to the number of data samples, training using the traditional epoch formulation is impractical. Thus, % Instead,
+we choose datapoints using an ordinal version of the triplet loss semi-hard sampling approach \cite{schroff2015facenet}.
+Namely, given an $(x_a, x_s)$ pair, we select the $x_d$ with the minimum $\lVert f(x_a)-f(x_d) \rVert$ that satisfies $$\lVert f(x_a)-f(x_d) \rVert > \lVert f(x_a)-f(x_s) \rVert,$$ as well as the class label constraint $\lvert y_a-y_d \rvert > \lvert y_a-y_s \rvert+\alpha$.
+% todo tuple-loss
+
+
+\section{Experiments}
+
+We describe in the following sections the experiments we conducted to achieve our best model. Our experiments generally proceeded in four parts: selecting features to train our models, modifying them to improve convergence, experimenting with soft labelling, and finally testing our proposed ordinal triplet loss formulation.
+% In the following we present the preliminary  results obtained using the systems we investigated on the Self Assessed Affect sub challenge. We further present the results of UAR for blind tests for all the three sub-challenges. 
+All experiments used the Adam optimizer and a learning rate scheduler which decreased the rate by a factor of 0.1 after 10 epochs of no improvement.
+
+\subsection{Feature Selection}
+
+Table 1 describes the experiments we conducted to select the best features to use for our model.
+% TODO not enough data for deep models e.g. raw waveform
+% todo if have time add wlanet and pretrained models
+Features tested include the ComParE baseline features, SoundNet features, MFCCs, and raw waveforms. Of the ComParE baseline features, we observed that ComParE, BoAW-2000, and auDeep-fused yielded the best performances for both neural and statistical models. SoundNet features are extracted from the pretrained network with the same name \cite{aytar2016soundnet}. We used the MFCCs to train a multi-layer LSTM augmented with an attention mechanism. The raw waveforms were used to train a deep network comprised of two convolutional layers followed by a multi-layer LSTM.
+For the SoundNet and baseline features, we used MLPs structured such that each subsequent layer in the network has approximately half the number of units as the previous one.
+% we observed that results didn't change much by modifying deep nets
+SVM results for ComParE, BoAW-2000, and auDeep-fused are based on those reported in the challenge paper \cite{schuller2019interspeech}.
+We observed that of the tested features, the three listed baseline features yielded the best results, as bolded in the table.
+
+\begin{table}[h]
+\centering
+\caption{Performance on Different Features}
+\label{spk_id}
+\begin{tabular}{llcc}
+                            & Model    & {Spearman (Devel)} \\ \toprule
+SoundNet                & MLP &  0.030           \\ \toprule
+ComParE                     & SVM &  0.251           \\
+                            & MLP     &  \textbf{0.300}           \\ \toprule
+BoAW-2000                   & SVM &  0.269           \\
+                            & MLP     &  \textbf{0.313}           \\ \toprule
+auDeep-fused                & SVM &  0.261           \\
+                            & MLP     &  \textbf{0.329}           \\ \toprule
+MFCC                & Attention LSTM &  0.018           \\ \toprule
+Raw Waveform                & CNN LSTM &  0.031           \\ \bottomrule                            
+\end{tabular}
+\end{table}
+
+\subsection{Data Modification}
+
+Table 2 on the next page describes the experiments we conducted to modify the input data. Namely, we tested upsampling and weighting the classification loss by class label frequencies as potential approaches to reconcile the skewed data distribution. We also tested applying PCA on the input features before feeding them into the model as a potential approach to reduce the high dimensionality of the features. For all the experiments in this section, we used MLPs with the halving property described in the previous section.
+We observed that these data modification approaches did not consistently improve the model, and thus did not use them in subsequent experiments.
+% modifying [size of data]
+% only do baseline if have time
+% to deal with variance, each ran at least 10 times and took max
+
+\begin{table}[h]
+\centering
+\caption{Data Modifications}
+\label{spk_id}
+\begin{tabular}{llcc}
+                            & Features    & {Spearman (Devel)} \\ \toprule
+Upsampling                 & ComParE &  0.271           \\
+                            & BoAW-2000 &  0.308           \\
+                            & auDeep-fused     &  0.303           \\ \toprule
+PCA                   & ComParE &  0.279           \\
+                     & BoAW-2000 &  0.325           \\
+                            & auDeep-fused     &  0.254           \\ \toprule
+Weighted Loss                & ComParE &  0.279           \\
+                       & BoAW-2000 &  0.301           \\
+                            & auDeep-fused     &  0.243           \\ \bottomrule  
+\end{tabular}
+\end{table}
+
+\subsection{Impact of Soft Labels}
+
+Table 3 describes the results from using the soft labelling formulation. All experiments in this section also used MLPs with the halving property described earlier.
+We observe that models trained on soft labels perform noticeably better than models trained on hard labels for two of the three feature types.
+
+\begin{table}[h]
+\centering
+\caption{Soft Labels}
+\label{spk_id}
+\begin{tabular}{lcc}
+                            Features    & {Spearman (Devel)} \\ \toprule
+                 ComParE &  \textbf{0.311}           \\
+                            BoAW-2000 &  \textbf{0.333}           \\
+                            auDeep-fused     &  0.322           \\ \bottomrule  
+\end{tabular}
+\end{table}
+
+\subsection{Impact of Ordinal Triplet Loss}
+% impact of triplet loss (on top of soft labels)
+% include siamese results e.g. mu triplet if have time
+
+Table 4 below summarizes our results using ordinal triplet loss.
+% todo consider starting with decription of baselines if ordinal result is notable
+We train all models in this formulation using the Adam optimizer  % cite
+with learning rate $10^{-7}$, the joint loss described in Section 3.3, batch sizes of 64, and early stopping with a patience of 10.
+For our models trained via ordinal triplet loss, $f$ is an MLP with input dimensions halved for each subsequent layer, and $g$ is comprised of two fully connected layers.
+% if have time later - we compare our approach with [historical/traditional ordinal regr approaches]: threshold, ordistic, + vote, mu triplet
+We observe that utilizing ordinal triplet loss yields noticeable improvement in model performance with respect to the BoAW-2000 feature set.
+% weigh loss as in provost (if end up using), and then cite
+% statistically significant, format as in provost
+
+\begin{table}[h]
+\centering
+\caption{Ordinal Triplet Loss}
+\label{spk_id}
+\begin{tabular}{lcc}
+                Features    & {Spearman (Devel)} \\ \toprule
+                ComParE &  0.308           \\
+                BoAW-2000 &  \textbf{0.343}           \\
+                auDeep-fused     &  0.323           \\ \bottomrule  
+\end{tabular}
+\end{table}
+
+% TODO elaborate
+% Based on the preliminary experiments, system \textbf{SI} appears to achieve a significant boost over the baseline before fusion. This seems plausible due to the nature of task at hand: emotions and intent have been known to be speaker specific. System \textbf{CTR} surprisingly does not have the expected gain in performance. We hypothesize that even though the premise of improving the class statistics by enhancing contrastiveness is valid, the manner in which we have performed the manipulation might be flaky. For example, given manipulating pitch might not be the  best way to improve contrastiveness when the classes are separated by valence. However, we do see improvements with the Atypical affect subchallenge. Specifically, the recall for the class angry seems to improve with very little augmentation. Another observation with respect to system \textbf{CBR} is that the `neutral' class seems to be very sensitive to any subsampling. 
+
+\subsection{Analysis of Results}
+
+Figure 1 plots the t-SNE visualization of the training data in our model's embedding space. Lighter points represent data samples with higher class labels. The model is able to successfully learn a space that captures desirable ordinal relations, generally mapping data with closer class labels to closer locations in the embedding space.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=70mm,scale=0.3]{LatexDiss/Dissertation/images/tsne_train.png}
+\caption{ t-SNE Visualization of Embedding Space} 
+\label{frame_replacement_overview}
+\end{figure}  
+
+% if have time: graph of plain triplet versus ordinal triplet embs
+% look into provost visualization description
+% projection of embeddings
+% Confusion matrix
+
+
+\section{\textit{Proposed Approach}}
+\label{proposed_approach}
+
+\subsection{Generative Models of poly species acoustics}
+
+Let us consider that an audio corpus A consists of acoustic recordings from different species $\{ s_1, s_2...,s_n \}$, where each $s_i$ might comprise of multiple instances in a particular species. It is desirable to define a set of attributes that can describe the generative process behind A. For this, let an audio utterance \textit{u} $\subset$ A be described by a set of attributes \textbf{A} where the individual attributes could be the identity of species, style of utterance, content, etc. Then the prior distribution of A can be represented by a parametric function g such that g maximizes the likelihood of A over the set of its attributes:
+
+\begin{equation}
+P_{\omega}(X) = g_{\omega}(A)
+\end{equation}
+
+We posit that to explain the generative process behind A, it is sufficient to disentangle the causal factors of variations in A and then compose them to reconstruct u. To illustrate this, let us consider a toy-example where we build a machine learning model capable of generating Pythagorean triplets. Pythagorean triplets are a triplet of numbers that follow Pythagoras Theorem such as $\{3,4,5\}$ and $\{5,12,13 \}$. In this task, the attribute-set consists of the relationship between the first two-elements of the triplet. If the model is able to discover this attribute, it can generalize for any given numbers.
+
+%Note that the attribute-set can either contain individual entities or the relationships between them or both.  To illustrate this, let us consider a toy-example where we build a binary classifier to predict if a given integer triplet is a Pythagorean triplet. Pythagorean triplets are a triplet of numbers that follow Pythagoras Theorem such as $\{3,4,5\}$ and $\{5,12,13 \}$. In this task, the attribute-set consists of the relationship between the first two-elements of the triplet. If the model is able to discover this attribute, it can generalize for any given numbers. %Another example is to build a generative model for predicting the next number in the Fibonacci series. The attribute-set consists of the relation between the last two elements on the input list. However, if we have a more complicated task like building a classifier for MNIST digits, then the attribute-set has multiple first and second order relations like brush strokes, shape of the digits etc. 
+
+For synthesizing audio from multiple species, the generative process needs to be able to disentangle the appropriate individual attributes from the observed data $A_{obs}$ and also compose them. Based on this, we are interested in working with a set of models that provide flexibility to both decompose / disentangle the causal factors of variation in the input data and also have the ability to combine them. To accomplish this, we use  latent stochastic variable models. 
+
+\iffalse
+The model needs to do two things: (1) Encode the textual representations from different languages into a universal format and (2) Put the speaker dependent factors of variation in the decoder. 
+\subsection{A Case for controlled disentanglement of attributes}
+
+We believe that complete disentanglement of input data into its independent causal factors of variation is not fully useful. A more attractive option is to employ priors about the causal factors of variation and control what gets disentangled. This can also be seen as a way of incorporating inductive bias into the model. This was always the case in supervised learning anyway. The idea is to do away with the nuisance variables. Typical priors used today however, are generic and include every factor of variation. This is not only less useful but also leads to an average performance. A manifestation of this can be seen in the spoilt reconstruction ability of the models that use global priors. Instead of weakening the decoder for covering the reconstruction, we can flip the equation and force the encoder to encode only information required by the decoder, employing the prior to accurately solve the task at hand.  
+\fi
+
+
+\subsection{VQVAE}
+We hypothesize that if we use background knowledge about the data distribution while designing the priors, we can help the encoder effectively disentangle the latent causal factors of variation in the data. This presents us with an opportunity to control what gets disentangled in the latent space by appropriately choosing prior distribution. In the current context, a desirable requirement from encoder is to generate task agnostic yet shared representations that help discriminate the intermediate classes. Therefore, we engineer our prior space to account for the segmental information in the utterance by representing the prior as a discrete latent variable bank, similar to the filterbanks used for feature extraction from speech. Each discrete latent variable has a different set of parameters. We have chosen the number of classes to be 64. 
+
+
+
+
+
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=200pt]{images/soundnet_original.jpg}
+  \includegraphics[width=200pt]{images/modifiedSoundnet.png}
+  \caption{Original SoundNet architecture~\cite{aytar2016soundnet} on top and modified SoundNet architecture at the bottom. The modified version uses 2 layers of 512 fully connected (fc) units and a softmax layer of 3 units.}
+  \label{embedding_extraction}
+\end{figure}
+
+
+
+
+
+
+\section{Experiments}
+
+In the following we present the preliminary  results obtained using the systems we investigated on the Styrian Dialect sub challenge. We further present the results of UAR for blind tests for all the three sub-challenges. We have used our submission from previous year as one of our baselines.
+
+\subsection{Baseline System - SoundNet}
+
+
+
+SoundNet~\cite{aytar2016soundnet} is a convolutional network operates on raw waveforms and is trained to predict the objects and scenes in video streams at certain points.  After the network is trained, the activations of its intermediate layers can be considered a representation of the audio suitable for classification. It has to be noted that SoundNet is a fully convolutional network, in which the frame rate decreases with each layer. Since we need to predict the emotions with reasonable recall, we cannot extract features from the higher layers of SoundNet directly. 
+
+
+The original SoundNet network has seven hidden convolutional layers interspersed with maxpooling layers. Each convolutional layer essentially doubles the number of feature maps and halves the frame rate. The network is trained to minimize the KL divergence from the ground truth distributions to the predicted distributions. In the original SoundNet architecture, the higher layers have been subsampled too much to be used directly for feature extraction. In order to fully exploit the information in the higher layers, we train a fully connected variant of SoundNet (see Fig.~\ref{embedding_extraction}). Instead of using convolutional layers all the way up, we switch to fully connected layers after the 5th layer.  We have also changed the input sampling rate to \SI{16}{\kilo\Hz} to match the provided data. 
+
+
+\iffalse
+ \begin{table*}[h]
+\centering
+\caption{UAR on Val set. Each model was trained for 100 epochs} 
+\label{blind}
+\begin{tabular}{|c|c|c|c|c|}
+  \hline
+\textbf{Architecture} & \textbf{Features}  & \textbf{UAR}  & \textbf{Train Loss} & \textbf{Test Loss} \\
+  \hline
+  
+Baseline (256T + SGD + Batch size 4)  & SoundNet  & 38 & 0.72 & 0.93 \\
+ \hline
+Baseline + Adam  & SoundNet  & 36 & 0.06 & 2.64 \\
+ \hline 
+5 sec split  & SoundNet  & 41 & & \\
+ \hline 
+Baseline + 5 sec split & Soundnet & 41  & 0.05 & 4.01 \\ 
+\hline
+Baseline + 5 sec split + 0.2 dropout & Soundnet & 42  & 0.046 & 4.02 \\ 
+\hline
+Baseline + 5 sec split + Adam & Soundnet &  44 & 0.021 & 6.36 \\ 
+\hline
+Baseline + 5 sec split + Adam + 0.2 dropout & Soundnet &  43 & 0.027 & 6.15 \\ 
+\hline
+Baseline + 5 sec split + Adam + 0.2 dropout + 16 bsz & Soundnet &  42 & 0.018 & 5.87 \\ 
+\hline
+Baseline + 5 sec split + Adam + SI & Soundnet &  44 & 0.041 & 4.88 \\ 
+\hline
+Baseline + 5 sec split + Adam + SI + 0.2 dropout & Soundnet &  44 & 0.027 & 4.85 \\ 
+\hline
+Baseline + 5 sec split + Adam + SI + selu & Soundnet &  41 & 0.013 & 4.35 \\ 
+\hline
+Baseline + 5 sec split + 3 sec split + Adam + SB + selu & Soundnet &  46 & & \\ 
+\hline
+Baseline + 5 sec split + 3 sec split + Adam + SB  & Soundnet &  45 & 0.009 & 5.83 \\ 
+\hline
+Baseline + 5 sec split + 3 sec split + Adam + 0.2 drop +  SB  & Soundnet & 44 & 0.012 & 5.53 \\ 
+\hline
+Baseline + 5sec + 3sec + Adam + 0.2 drop +  SB + KNN & Soundnet & 43 & 0.015 & 7.19 \\ 
+\hline
+& & & & \\
+\hline
+Baseline (1024T +128T + SGD + Batch size 4)  & AUDEEP  & 27 & 0.99 & 1.15 \\
+\hline
+Normalized Baseline (1024T +128T + SGD + Batch size 4)  & AUDEEP  & 34 & 0.25 & 2.00 \\
+\hline
+Normalized Baseline (1024T +128T + SGD + Batch size 16 + 0.3 drop)  & AUDEEP  & 36 & 0.48 & 1.18 \\
+\hline
+Normalized Baseline (1024T +512T + SGD + Batch size 16 + 0.3 drop)  & AUDEEP  & 35 & 0.35 & 1.45 \\
+\hline
+Baseline (1024T +512T + SGD + Batch size 16 + 0.3 drop)  & AUDEEP  & 34 &1.00  & 1.03 \\
+\hline
+Baseline Weight Init (1024T+512T+SGD+16bsz + 0.3 drop)  & AUDEEP  & 29 & 1.02 & 1.12 \\
+\hline
+
+Baseline SVM & AUDEEP & 27 & & \\
+\hline
+Baseline SVM + Normalized & AUDEEP & 31 & & \\
+\hline
+
+Baseline Linear SVM + Normalized & AUDEEP & 38 & & \\
+\hline
+
+Temporal Classification  & Low level & 32.2 & & \\
+\hline
+
+Proposed  & VQVAE Features & 48.2 & & \\
+\hline
+\end{tabular}
+\label{table_systems}
+\end{table*}
+
+\fi
+
+\subsection{Temporal classification System}
+
+
+\subsubsection{Low level features}
+
+For acoustic feature extraction we divided each utterance (length is \SI{8}{\second}) into \SI{25}{\milli\second} segments with a \SI{10}{\milli\second} frame shift. For each frame we extract 13 mel-frequency cepstral coefficients and their deltas and double-deltas obtaining a feature vector of 39 dimensions. We further extract the log pitch ($f0$) and strengths of excitation (5 dim) \cite{yoshimura2001mixed}. In addition, we also obtain 40 dimensional filter banks and 23 dimensional PLP based features. Filter banks have been obtained using the open source toolkit Kaldi~\cite{kaldi2011} with `dithering' enabled as it was shown to be robust in other experiments. We have also extracted several features using Opensmile toolkit~\cite{opensmile2010} and performed singular value decomposition with the intention of obtaining an acoustic representation. This procedure also results in a dense low dimensional representation.  This representation was later used  in combination with the high level features we obtained in the spirit of early fusion. 
+
+\subsubsection{Classifier}
+Using all previously mentioned features, we train a 2 layer bidirectional LSTM network with 512 units in each cell. This is followed by 2 fully connected layers each with 512 units. The final softmax layer dimensions were dependent on the sub challenge. The network is trained by minimizing the expected divergence between the classes using cylindrical SGD~\cite{smith2017cyclical}. 
+
+
+\subsection{VQVAE based System}
+The architecture of our proposed model continues from \cite{unsupervised_representation_learning_wavenet_autoencoders}, with some modifications. As our encoder, we use the same encoder mentioned in \cite{unsupervised_representation_learning_wavenet_autoencoders} that downsamples the input audio by 64. We have used WaveNet\cite{van2016wavenet} as our decoder. Following \cite{strubell2017fast}, we have shared the parameters of all the residual layers with common dilation factors. We use Mixture of Logistics loss to train the model and the number of logistics was set to 10. Audio signal was power normalized and squashed to the range (-1,1). To make the training faster, we have used chunks of 4000 time steps.  Quantizer acts as a bottleneck and  performs a similarity matching to generate the appropriate code from a parameterized learnable codebook. We define the latent space $e \in \mathbmm{R}^{k\times d}$ contains $k$ $d$-dim continuous vector. The similarity measure is implemented using minimum distance in the embedding space. We have used 128 dimensions to perform the comparison.  
+
+
+
+\subsection{Class balancing by data augmentation}
+
+We systematically try to increase the data points from the classes with lesser number of examples. Since our utterance level feature extractor realizes different feature representation for audios of different length, we have experimented with augmenting the original data with additional data created by randomly joining audio rom the same class. For this, we have combined all the audio files and split them into longer chunks. We have made 5 second and 3 second chunks in this fashion and augmented their features to the original set. 
+
+
+\subsection{Speaker identity based experiments(System SI)}
+
+Since the classifiers we use are discriminative in nature, we experiment with  two ways of incorporating speakers or subject specific information: 
+
+\begin{itemize}
+
+\item (1) We add the identity of the speaker as an extra dimension thus forcing the model to build speaker specific models.  For example, in case of decision trees, this forces the model to split at the identity of speaker.
+
+\item (2) Normalizing with respect to the speaker, following the procedure typically used in speech recognition. 
+
+\end{itemize}
+
+
+ \begin{table}[h]
+\centering
+\caption{UAR on Val set. Each model was trained for 100 epochs} 
+\label{blind}
+\begin{tabular}{|c|c|c|}
+  \hline
+\textbf{Architecture} & \textbf{Features}  & \textbf{UAR} \\
+  \hline
+
+Baseline  & AUDEEP  & 27  \\
+\hline  
+ Temporal Classification  & Low level & 32.2 \\
+\hline
+Baseline  & SoundNet  & 36  \\
+ \hline 
+ 
+
+Proposed  & VQVAE Features & 48.2 \\
+\hline
+\end{tabular}
+\label{table_systems}
+\end{table}
+
+
+\subsection{Blind Test Results and Discussion}
+
+The evaluation results on blind test set for the three sub-challenges is mentioned in the table \ref{blind}. Based on the preliminary experiments, we have utilized our generative model based approach for evaluating with the blind test set. The results from blind test are presented in the table \ref{table_systems}.
+
+\begin{table}[h]
+\centering
+\caption{UAR Blind test summary} 
+\label{blind}
+\begin{tabular}{|c|c|}
+  \hline
+Sub-challenge & Metric \\
+  \hline
+Styrian Dialects  & 47.25\\
+ \hline
+Baby Sounds &  57.2	\\
+ \hline
+Orca   & 86.6\\
+ 
+  \hline
+\end{tabular}
+\label{table_systems}
+\end{table}
+
+
+
+
+
+
+
+
+Code Mixing is a phenomenon where linguistic units such as phrases, words and morphemes of one language are embedded into an utterance of another language \cite{muysken2000bilingual,gella2014ye}. This is quite common in multilingual societies such as in India where English has transitioned from the status of a foreign language to that of a second language. Today such mixing has manifested itself in various types of text ranging all the way from news articles through comments/posts on social media, leading to co-existence of multiple languages in the same sentence. In the context of Text to Speech (TTS), voice deployed in such contexts has to be able to synthesize mixed text without ignoring the content from one of the languages. Typical approaches for building such mixed lingual voices require bilingual recordings\cite{traber1999multilingual,rallabandi_mixedlingual_IS2017,chandu2017speech}: speech data from the speaker in both native language as well as the additional language. However, obtaining such data might not always be feasible. On the other hand, social media and web 2.0 has enabled an outburst of audiovisual content at an unprecedented rate. Therefore, it might be useful to design techniques that can leverage such resources. In this paper, we present initial steps in that direction.
+
+%In this paper we also subject the voice building process to the availability of only monolingual data in the participating languages.
+
+We investigate training strategies for building code mixed voices subject to the availability of only monolingual data in participating languages. Specifically, we concern ourselves with two scenarios: (1) Mixing in the case of a sentence which is primarily Indic but interspersed with English words. Such sentences are found as a newspaper headlines ( Ex: \textit{Microsoft ki mobile devices unit ne apni nayee smart phone Lumia 640 aur uske badee screen wali variant 640 par se parda utha liya hai}.)  (2) Mixing in the case of a sentence which is primarily English but has some Indic words. Such sentences are found as navigation instructions ( Ex: \textit{Proceed for 100 meters and then take a left at Sarojini Naidu Nagar Road, heading onto the Ballary chowrasta.})  Although building voices using such a combination of multilingual corpora appears as a simple extension of multispeaker or multilingual speech synthesis, generating code mixed content is a deceptively non trivial task since there is a mismatch between training and the testing scenarios: Even though the model has access to data from both the participating languages during training, code mixed content it is exposed to at test time - as seen from the example sentences - is a novel composition of linguistic units from both the languages. To assist the model in dealing with such mismatch, we incorporate latent stochastic variables into the training procedure.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=80mm,scale=0.5]{LatexDiss/Dissertation/images/tacotron.png}
+\caption{ Illustration of our procedure for generating a code mixed utterance. Text from different languages is converted into a common representation space by Tacotron encoder. The encoded representation is hashed to a latent code based on a discrete articulatory prior bank. The code is passed to the decoder, followed by a WaveNet using speaker embeddings as global conditioning that generates audio. } 
+\label{overview_figure}
+\end{figure}  
+%it is not exposed to the inter mixed sequence of characters it encounters during testing. Deep Neural Generative models have seen a tremendous amount of progress in the recent past. These models factorize the joint probability of the original data distribution and an optional local variability as a recursive product of conditional distributions. Typical implementation of such models therefore follows an auto-regressive framework although other formulations have been suggested as well. Such models have been shown very effective in addressing one of the major challenges with conventional vocoding techniques - fidelity. The principles used in deep generative models for speech such as dilated convolutions are also employed in varied domains such as in machine reading and named entity recognition\cite{strubell2017fast}. Given their expressiveness, we employ sequence to sequence models for our voice building process and incorporate latent stochastic variables into them. 
+
+Models with latent random variables (referred to as latent stochastic variable models hereafter)  provide flexibility to jointly train the latent representations as well as the downstream  network. They are expected to both discover and disentangle causal factors of variation present in the distribution of original data, so as to generalize at inference time. However, while training latent stochastic variable models, optimizing the exact log likelihood can be intractable. To address this, a recognition network is employed to approximate the posterior probability using reparameterization \cite{kingma_vae}. We make an observation that articulatory information about speech production presents a discrete set of independent constraints. For instance, manner and place of articulation are two articulatory dimensions characterized by discrete sets(labial vs dental, etc). Based on this, we condition the recognition network in latent stochastic variable models to conform to articulatory prior space by using a bank of discrete prior distributions. We show that such priors help encode language independent information thereby facilitating synthesis of code mixed content.  
+
+
+
+\subsection{Synthesis of Code Mixed Text}
+Synthesis of code mixed text using monolingual data \cite{elluru2013word, chandu2017speech} has been addressed primarily at the linguistic level:  by either mapping the words/phones of the foreign language with the closest sounding phones of the native language or by using transliteration \cite{sitaram2015experiments,sitaram2016speech}. However, these methods have been shown to generate foreign accents \cite{tomokiyo2005foreign, campbell2001talking, badino2004language}. In our work, we borrow the central idea from the works - the requirement of a common linguistic space - and apply this as a constraint on the representations learnt in our latent stochastic variable model.  In \cite{frank_soong_frame_mapping}, the authors follow a two step procedure to address the issue with accented speech. They first warp the source speakers' speech parameter trajectories (in L1) towards the target speaker and then `tile' them with the data (in L2) to form a pseudo training corpus which is subsequently used to train a bilingual speech synthesis system. Similar practices can be found in the literature for voice adaptation \cite{kain_personalizing,kurimo_personalizing, oura_unsupervised, yamagishi_SAT, latorre2005polyglot} and voice conversion \cite{david_sundermann_unitselection_voiceconversion}. Although we do not explicitly aim to transfer acoustic parameters, our decoder is engineered to work with a global speaker embedding that learns speaker specific information. Therefore, our approach can be seen as analogous to these works. Our work is closest to \cite{end2endcstts_mixofmono_helenming, phoneme_attention_mixedlingualneuralbilingualtts} in that we use monolingual recordings. However, we explicitly work in the latent prior space while \cite{end2endcstts_mixofmono_helenming} operate at the level of encoding individual languages and \cite{phoneme_attention_mixedlingualneuralbilingualtts} begin with an average voice and refine it using phoneme informed attention. 
+
+
+
+\subsection{\textit{VACONDA\footnote{Phonetically similar to its namesake `Wakanda' from Marvel Comics}} - \textit{Va}riational \textit{A}ttention based \textit{CON}trolled \textit{D}isentanglement using \textit{A}rticulatory priors}
+
+
+\renewcommand{\arraystretch}{1.1}
+\begin{table}[h]
+\caption{Articulatory Features\label{tab:arti}}
+\centering
+\begin{tabular}{l | c | c}\toprule[\heavyrulewidth] \textbf{Feature name} & \textbf{Possible Classes} & \textbf{Cardinality} \\
+\toprule[\heavyrulewidth]
+vowel or consonant & + - 0 & 3 \\
+vowel length & s l d a 0 & 5 \\
+ vowel height & 1 2 3 0 - & 5 \\
+vowel frontness & 1 2 3 0 - & 5\\
+lip rounding & + - 0 & 3\\
+consonant type & s f a n l r 0 &  7\\
+ place of articulation & l a p b d v g 0 & 8\\
+consonant voicing & + - 0 & 3\\
+\bottomrule[\heavyrulewidth]
+\end{tabular}
+\label{arff}
+\end{table}
+
+
+We make an observation that dealing with speech presents a characteristic advantage - speech has both continuous as well as discrete priors. The generative process of speech assumes a Gaussian prior distribution which is continuous in nature. However, the language which is also present in the utterance can be approximated to be sampled from a discrete prior distribution. Exact manifestation of this in linguistics can be at different levels: phonemes, words, syllables, sub word units, etc. From the analysis presented in previous subsections, we posit that it helps encoder effectively disentangle the latent causal factors of variation if we use background knowledge about the data distribution while designing the priors. In other words, incorporating appropriated priors provides us with an opportunity to control what gets disentangled (or) decomposed (or) factorized in the latent space. In our context, an appropriate requirement from the encoder is to generate language agnostic yet phonetic representations such that a speaker dependent decoder can synthesize code mixed content. Therefore, we engineer our prior space to account for phonetic information in the utterance by representing the prior as a discrete latent variable bank, similar to filterbanks used for feature extraction from speech. Each discrete latent variable has a different set of states reflecting one of the articulatory dimensions. The specific design of our latent space is highlighted in the table \ref{arff}. Voice building procedure with these priors is depicted in figure \ref{overview_figure}. We have used the articulatory dimensions according to the definitions in Indic voice building process of \cite{black2006clustergen}. Although some of them might be redundant, for this initial study we have retained all the articulatory dimensions. Without loss of generality, we assume that the individual latent articulatory dimensions are independent of each other. The divergence between the true prior and approximate prior now becomes:
+\begin{equation*}
+\begin{multlined}
+D_{KL}(q_{\phi}(z_{enc}|p) || p(z_{code})) = \sum_{i=1}^{N}[\\ 
+E_{q_{\phi}(z_{enc}^{i}|p)}[log  q_{\phi}(z_{enc}^{i}|p)] - E_{q_{\phi}(z_{enc}^{i}|p)}[log p(z_{code}^{i})] ]
+\end{multlined}
+\end{equation*}
+where N is the number of articulatory dimensions and i denotes the index of individual articulatory dimensions. $z_{code}$ denotes the parameterized codebook and $z_{enc}$ denotes the representation output by the encoder. 
+
+
+
+\section{Experiments}
+\label{mixed_systems}
+
+\subsection{Data}
+
+We have used speech and text data from three Indian languages Hindi, Telugu and Marathi released as a part of resources for Indian languages \cite{indic_dataset} to build our synthesis systems. From our baseline voice building process, we found male speaker from Hindi to be the most reliable voice in terms of quality. Therefore, all of our systems use English recordings from  Mono segment of this speaker as English set - as a scaffolding. For  other two languages, we use only monolingual data from the speakers. In other words, to generate code mixed Telugu sentence, the systems have access to English content but from a different speaker. As baseline for comparison, we have built a CLUSTERGEN voice using monolingual recordings employing phone mapping. Evaluation was performed in the form of listening tests with 20 native students following the convention of Blizzard Challenge evaluations using \cite{parlikar2012testvox} with naturalness as criterion in  terms of Mean Opinion Score (MOS) on a scale of 1(least natural) to 5(highly natural). All the listening tests involved test sentences generated using the Multilingual test set (ML) from \cite{prahallad2014blizzard}. The evaluation results are depicted in table \ref{table_results}.
+
+\subsection{Implementation Details}
+
+We have built two systems employing variational attention: VQTacotron with vanilla vector quantization and VACONDA - with articulatory prior on the latent space. The architecture of our models continues from \cite{multilingual_convattention}, with some modifications. We have used WaveNet\cite{van2016wavenet} as our decoder. Following \cite{strubell2017fast}, we have shared the parameters of all the residual layers with common dilation factors. We use Mixture of Logistics loss to train the model and the number of logistics was set to 10. Speech signal was power normalized and squashed to the range (-1,1). To make the training faster, we have used chunks of 8000 time steps.  Our quantizer performs vector quantization to generate the appropriate code from a parameterized codebook. We define the latent space $e \in \mathbmm{R}^{k\times d}$ contains $k$ $d$-dim continuous vector. Quantization is implemented using minimum distance in the embedding space. We have used 128 dimensions to perform the comparison in system VQTacotron. The number of classes was chosen to be 64, approximating 64 universal phonemes. For system VACONDA, we use a linear mapping to first project the 128 dimensional vector to 160 dimensions. We then perform comparison with respect to individual articulatory dimensions each of which is 16 in size. The speaker embedding is shared between the decoder of our acoustic model and WaveNet. We have noticed the lengths of utterances in the Indic datasets being too big to train attention from scratch. Therefore we have initialized attention using alignments performed within Festvox using HMM aligner. All the models were built at phone level since that was observed to be the most stable configuration even though our phones do not cover all the variants (ex. we do not have explicit phones for geminates). We have used quantization penalty and commitment loss terms as mentioned in \cite{chorowski2019unsupervised}. In addition, we have also normalized each latent embedding vector  to be on a unit sphere.
+
+% Assuming $z_e(x)$ denote the encoder output in the latent space, then the input of decoder $z_d(x)$ will be obtained by $ \argmin_{j}d(e_j, z_e(x))$ where $d$ is a similarity function of two vectors. In this paper, we consider Euclidean distance as the similarity metric
+
+\begin{table}[h]
+\caption{MOS Scores for  Naturalness in prosodic modeling based experiments } 
+\begin{tabular}{|c|c|c|c|}
+  \hline
+ Config & Clustergen & VQTacotron & VACONDA \\
+  \hline
+  Hi-Eng (Male) & 3.9 & \textbf{4.31} & 4.28  \\
+  Tel-Eng(Female) & 3.6 & 3.9 & \textbf{4.1} \\
+  Mar-Eng(Male) & 3.7 & 4.0 & \textbf{4.0} \\
+  Mar-Eng(Female) & 3.4 & 3.9 & \textbf{4.0} \\
+  \hline
+\end{tabular}
+\label{table_results}
+\end{table}
+\subsection{Observations}
+
+An informal analysis on the outputs from the proposed systems revealed that the characteristics of the English speaker were retained in certain areas within the utterance, resulting in a slightly stylized version\footnote{The samples can be found here \url{http://www.cs.cmu.edu/~srallaba/IS2019_CodeMixedTTS/}.}. We want to investigate this further and hope to uncover techniques that can provide more control. While most of the systems using CLUSTERGEN \cite{rallabandi_mixedlingual_IS2017} make errors in the prosodic features such as irregular duration shifts at the boundaries between languages, the proposed approaches have smooth transitions at the boundaries. However, we have observed marked differences in the pronunciations by the proposed approaches. For instance, the phone `S' from the word `Stanford' when heard in isolation is indistinguishable from other fricative sounds. Since we specifically deal with articulatory priors in VACONDA, a reasonable assumption to make is that this issue will be bypassed by the model. However, this characteristic is common across voices built using both VQTacotron as well as VACONDA.
+
+

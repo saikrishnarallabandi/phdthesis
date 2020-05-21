@@ -1,0 +1,86 @@
+% Change to 'masters' to produces the masters thesis preliminary pages
+\documentclass[oneside,phd,etd]{WSUclass}
+\usepackage{import}
+
+% preamble contains title page, signature page, acknowledgment and abstract texts
+\usepackage{preamble}
+\usepackage{hyperref}
+
+% Pacakges used
+\usepackage[utf8]{inputenc} % Remove warning on ascii conversion
+\usepackage[T1]{fontenc} % Remove warning on ascii conversion
+\usepackage[refsection=part,citestyle=apa,style=authoryear,natbib=true,backend=biber]{biblatex}
+%\usepackage[
+%backend=biber,
+%style=alphabetic,
+%citestyle=authoryear
+%]{biblatex}
+ 
+%\usepackage{hyperref}
+
+% Make chapter numbers into string words 1 -> ONE
+\usepackage{fmtcount}
+\makeatletter
+\renewcommand{\@makechapterhead}[1]{\vspace *{40\p@ }{\parindent \z@ 
+\raggedright \normalfont \ifnum \c@secnumdepth >\m@ne \Huge \bfseries 
+\@chapapp \space \Numberstring{chapter} \vskip 10\p@ \fi #1\par \nobreak \vskip 30\p@ }}
+\makeatother
+
+\addbibresource{LatexDiss/Dissertation/bib.bib}
+
+\begin{document}
+
+\hypersetup{breaklinks=true}
+
+ % Start page counting in roman numerals
+ \frontmatter
+
+ % This command makes the formal preliminary pages.
+ % You can comment it out during the drafting process if you want to save paper.
+ \makepreliminarypages
+
+ \doublespace
+ % Make the table of contents.
+ \tableofcontents
+ \thispagestyle{plain}
+
+ % Make the list of tables
+ \mylistoftables
+ \thispagestyle{plain}
+ 
+ % Make the list of figures
+
+
+  % This page is OPTIONAL. To remove, comment out and \dedicationpage in diss.tex
+ \dedicationpage
+ \clearemptydoublepage
+
+ % Start regular page counting at page 1
+ \mainmatter
+
+% OK. Everything is set up. Type your thesis here.
+\input{LatexDiss/Dissertation/chapters/introduction_final.tex}
+
+%%%%%%%%%%%% De Entanglement
+%\input{chapters/deentanglement.tex}
+
+%%%%%%%%%%%% De Entanglement by Priors
+%\input{LatexDiss/Dissertation/chapters/de-entanglement_of_content}
+
+%%%%%%%%%%%% De Entanglement by Loss
+%\input{LatexDiss/Dissertation/chapters/de-entanglement_of_style}
+
+%%%%%%%%%%%% De Entanglement by Divergence
+%\input{LatexDiss/Dissertation/chapters/de-entanglement_of_structure}
+
+%%%%%%%%%%%% Conclusion
+\input{chapters/conclusion.tex}
+
+
+% Bibliography
+\printbibliography
+
+% Appendices
+%\include{app}
+
+\end{document}
